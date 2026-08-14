@@ -115,6 +115,17 @@ async function del<T>(path: string): Promise<T> {
 }
 
 async function download(path: string, filename: string): Promise<void> {
+  if (isTauri) {
+    const payload = await invoke<{ base64: string; mime: string; filename?: string }>('api_request', { request: { method: 'GET', path, body: null } });
+    const bytes = Uint8Array.from(atob(payload.base64), (char) => char.charCodeAt(0));
+    const url = URL.createObjectURL(new Blob([bytes], { type: payload.mime }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = payload.filename || filename;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
   const res = await fetch(`${BASE}${path}`, { headers: authHeaders() });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   const url = URL.createObjectURL(await res.blob());
@@ -270,6 +281,16 @@ export const api = {
   backupDatabase: () => download('/data/backup', 'opencodegoboard-backup.db'),
   downloadDiagnostics: () => download('/data/diagnostics', 'opencodegoboard-diagnostics.json'),
   restoreDatabase: async (file: File) => {
+    if (isTauri) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = '';
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      const result = await invoke<{ ok: boolean; schema_version: number }>('api_request', {
+        request: { method: 'POST', path: '/data/restore', body: { base64: btoa(binary) } },
+      });
+      responseCache.clear();
+      return result;
+    }
     const res = await fetch(`${BASE}/data/restore`, {
       method: 'POST', headers: authHeaders({ 'Content-Type': 'application/octet-stream' }), body: file,
     });

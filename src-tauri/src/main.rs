@@ -6,8 +6,18 @@ use tauri_plugin_opener::OpenerExt;
 mod backend;
 mod quota;
 mod usage;
+mod secrets;
 
 struct Preferences(Mutex<bool>);
+
+fn import_legacy_database(target:&std::path::Path) {
+    if target.exists(){return}
+    let Some(appdata)=std::env::var_os("APPDATA") else{return};
+    for relative in [["OpenCodeBoard","data","68backend.db"],["68hub","data","68backend.db"]] {
+        let source=relative.iter().fold(std::path::PathBuf::from(&appdata),|path,part|path.join(part));
+        if source.is_file(){if let Some(parent)=target.parent(){let _=std::fs::create_dir_all(parent);}if std::fs::copy(&source,target).is_ok(){break}}
+    }
+}
 
 #[tauri::command]
 fn request_close(app: tauri::AppHandle, preferences: tauri::State<Preferences>) -> String {
@@ -63,11 +73,10 @@ fn main() {
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             let db_path = data_dir.join("opencodegoboard.db");
+            import_legacy_database(&db_path);
             backend::initialize(&db_path).map_err(std::io::Error::other)?;
-            app.manage(backend::BackendState { db_path, settings: Mutex::new(serde_json::json!({
-                "refresh":{"opencode_go":{"auto_refresh":true,"interval_sec":60}},
-                "usage_sync":{"auto_sync":true,"interval_sec":300,"backfill_pages_per_request":100,"max_pages_per_incremental":30}
-            })) });
+            let settings = backend::load_settings(&db_path);
+            app.manage(backend::BackendState { db_path, settings: Mutex::new(settings) });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![request_close, close_confirm, get_tray_mode, set_tray_mode, open_external, open_opencode_login, backend::api_request])
