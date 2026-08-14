@@ -21,6 +21,7 @@ export const desktop = {
     ? Promise.resolve({ status: 'error', error: '请使用系统浏览器登录并手动粘贴凭据' } as const)
     : electron?.loginOpenCode() ?? Promise.resolve({ status: 'error', error: 'desktop API unavailable' } as const),
   loginOpenCodeSystem: () => isTauri ? invoke<boolean>('open_opencode_login') : electron?.loginOpenCodeSystem() ?? Promise.resolve(false),
+  installUpdate: () => isTauri ? invoke<boolean>('install_update') : Promise.resolve(false),
   getTrayMode: () => isTauri ? invoke<boolean>('get_tray_mode') : electron?.getTrayMode() ?? Promise.resolve(false),
   setTrayMode: (enabled: boolean) => isTauri ? invoke<boolean>('set_tray_mode', { enabled }) : electron?.setTrayMode(enabled) ?? Promise.resolve(false),
   onCloseDialogRequest: (callback: () => void) => {

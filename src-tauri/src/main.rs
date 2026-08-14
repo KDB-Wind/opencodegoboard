@@ -3,6 +3,7 @@
 use std::sync::Mutex;
 use tauri::{Emitter, Manager, menu::{Menu,MenuItem}, tray::{MouseButton,MouseButtonState,TrayIconBuilder,TrayIconEvent}, WindowEvent};
 use tauri_plugin_opener::OpenerExt;
+use tauri_plugin_updater::UpdaterExt;
 mod backend;
 mod quota;
 mod usage;
@@ -68,9 +69,13 @@ fn open_opencode_login(app: tauri::AppHandle) -> Result<bool, String> {
     Ok(true)
 }
 
+#[tauri::command]
+async fn install_update(app:tauri::AppHandle)->Result<bool,String>{let(Some(_),Some(endpoint))=(option_env!("OPENCODEGOBOARD_UPDATER_PUBKEY"),option_env!("OPENCODEGOBOARD_UPDATER_ENDPOINT"))else{return Ok(false)};let url=endpoint.parse().map_err(|e:url::ParseError|e.to_string())?;let updater=app.updater_builder().endpoints(vec![url]).map_err(|e|e.to_string())?.build().map_err(|e|e.to_string())?;let Some(update)=updater.check().await.map_err(|e|e.to_string())? else{return Ok(false)};update.download_and_install(|_,_|{},||{}).await.map_err(|e|e.to_string())?;app.restart()}
+
 fn main() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
+    let mut updater=tauri_plugin_updater::Builder::new();if let Some(pubkey)=option_env!("OPENCODEGOBOARD_UPDATER_PUBKEY"){updater=updater.pubkey(pubkey)}
+    let builder=tauri::Builder::default().plugin(tauri_plugin_opener::init()).plugin(updater.build());
+    builder
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             let preference_path=data_dir.join("tray-mode.txt");let tray_enabled=std::fs::read_to_string(&preference_path).map(|v|v.trim()=="true").unwrap_or(false);
@@ -87,7 +92,7 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window,event|if let WindowEvent::CloseRequested{api,..}=event{api.prevent_close();let app=window.app_handle();let preferences=app.state::<Preferences>();if *preferences.enabled.lock().expect("tray preference lock"){let _=window.hide();}else{let _=app.emit("close-dialog-request",());}})
-        .invoke_handler(tauri::generate_handler![request_close, close_confirm, get_tray_mode, set_tray_mode, open_external, open_opencode_login, backend::api_request])
+        .invoke_handler(tauri::generate_handler![request_close, close_confirm, get_tray_mode, set_tray_mode, open_external, open_opencode_login, install_update, backend::api_request])
         .run(tauri::generate_context!())
         .expect("failed to run OpenCodeGoBoard");
 }

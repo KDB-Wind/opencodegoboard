@@ -93,6 +93,7 @@ export function Settings() {
   const [backfillDays, setBackfillDays] = useState(90);
   const [backfillUntil, setBackfillUntil] = useState('');
   const [quotaNotifications, setQuotaNotifications] = useState(loadQuotaNotificationSettings);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
   const syncConfigLoadedRef = useRef(false);
   useEffect(() => {
     if (config?.usage_sync && !syncConfigLoadedRef.current) {
@@ -616,6 +617,7 @@ export function Settings() {
 
       <div className="border border-base-200 rounded-xl p-4">
         <About />
+        <button className="btn btn-outline btn-sm mt-4" disabled={checkingUpdate} onClick={async()=>{setCheckingUpdate(true);try{const installed=await desktop.installUpdate();toast(t(installed?'settings.updateInstalled':'settings.noUpdate'),'info');}catch(error){toast(t('settings.updateFailed',{msg:(error as Error).message}),'error');}finally{setCheckingUpdate(false)}}}>{checkingUpdate?<span className="loading loading-spinner loading-xs"/>:t('settings.checkUpdates')}</button>
       </div>
 
       <div className="border border-base-200 rounded-xl p-4 space-y-3">
