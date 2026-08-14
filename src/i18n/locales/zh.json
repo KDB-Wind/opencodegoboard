@@ -164,6 +164,13 @@
     "unassigned": "未归属记录",
     "lastActive": "最后活动",
     "noSessions": "暂无会话"
+    ,"project": "项目"
+    ,"linkProject": "关联"
+    ,"projectNamePrompt": "项目名称"
+    ,"projectPathPrompt": "本地项目目录"
+    ,"sessionTitlePrompt": "会话标题"
+    ,"noProjectPath": "未关联目录"
+    ,"projectSummary": "费用 ${{cost}} · 缓存率 {{cache}}% · {{models}} 个模型"
   },
   "settings": {
     "title": "设置",

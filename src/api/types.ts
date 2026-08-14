@@ -171,6 +171,8 @@ export interface UsageRecord {
   cost_usd: number;
   key_id: string | null;
   session_id: string | null;
+  project_path?: string | null;
+  session_title?: string | null;
   plan: string | null;
 }
 
@@ -198,6 +200,9 @@ export interface UsageSession {
   account_id: string;
   account_name: string;
   session_id: string | null;
+  project_name: string | null;
+  project_path: string | null;
+  session_title: string | null;
   request_count: number;
   total_input_tokens: number;
   total_output_tokens: number;
@@ -206,6 +211,17 @@ export interface UsageSession {
   total_cost_usd: number;
   first_at: string;
   last_at: string;
+}
+
+export interface ProjectUsageStat {
+  project_name: string;
+  project_path: string | null;
+  request_count: number;
+  session_count: number;
+  total_cost_usd: number;
+  total_tokens: number;
+  cache_hit_rate: number;
+  models: Array<{ model: string; request_count: number; total_tokens: number; total_cost_usd: number }>;
 }
 
 export interface UsageDataHealth {

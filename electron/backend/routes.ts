@@ -62,6 +62,11 @@ const QuotaWeightRuleCreate = z.object({
   weight: z.number().positive(),
   effective_from: z.string().datetime(),
 });
+const SessionContextUpdate = z.object({
+  account_id: z.string(), session_id: z.string().min(1),
+  project_name: z.string().nullable().optional(), project_path: z.string().nullable().optional(),
+  title: z.string().nullable().optional(),
+});
 
 function opencodeAccountDict(row: db.OpenCodeAccountRow): Record<string, unknown> {
   return {
@@ -532,6 +537,16 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     });
     return c.json({ records: records.map(db.usageRecordWithAccountToDict), total, offset, limit });
   });
+
+  app.put('/api/usage/session-context', async (c) => {
+    const body = SessionContextUpdate.parse(await c.req.json());
+    if (!db.getOpencodeAccount(body.account_id)) return c.json({ detail: 'account not found' }, 404);
+    return c.json(db.upsertSessionContext(body));
+  });
+
+  app.get('/api/analytics/opencode/projects', (c) => c.json({
+    projects: db.listProjectUsageStats(c.req.query('account_id') || undefined),
+  }));
 
   app.get('/api/data/export.csv', (c) => {
     const escape = (value: unknown) => {

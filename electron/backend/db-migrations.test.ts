@@ -35,6 +35,8 @@ import {
   listQuotaWeightRules,
   createQuotaWeightRule,
   autoCalibrateQuotaWeights,
+  upsertSessionContext,
+  listProjectUsageStats,
 } from './db';
 
 let testDir = '';
@@ -145,6 +147,8 @@ describe('database migrations', () => {
           cost_usd: 0.0000001,
           key_id: null,
           session_id: 'ses_test',
+          project_path: 'E:/Project/demo',
+          session_title: 'Implement feature',
           plan: null,
         },
       ]),
@@ -153,6 +157,8 @@ describe('database migrations', () => {
     expect(records[0]).toMatchObject({
       reasoning_tokens: 7,
       session_id: 'ses_test',
+      project_path: 'E:/Project/demo',
+      session_title: 'Implement feature',
     });
 
     insertUsageRecordsIgnore(account.id, 'wrk_a', [
@@ -173,6 +179,13 @@ describe('database migrations', () => {
     expect(sessionRecords.map((record) => record.usg_id)).toEqual(['usg_reasoning']);
     const [unassigned] = listSessionUsageRecords({ account_id: account.id, session_id: null });
     expect(unassigned.map((record) => record.usg_id)).toEqual(['usg_unassigned']);
+    upsertSessionContext({
+      account_id: account.id, session_id: 'ses_test', project_name: 'Demo',
+      project_path: 'E:/Project/demo', title: 'Manual title',
+    });
+    expect(listProjectUsageStats(account.id)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ project_name: 'Demo', project_path: 'E:/Project/demo', request_count: 1 }),
+    ]));
 
     const hourly = opencodeHourlyStats();
     expect(hourly).toHaveLength(24);

@@ -28,6 +28,8 @@ export interface ParsedUsageRecord {
   cost_usd: number;
   key_id: string;
   session_id: string;
+  project_path: string;
+  session_title: string;
   plan: string | null;
 }
 
@@ -63,6 +65,8 @@ export function toDbDict(r: ParsedUsageRecord): Record<string, unknown> {
     cost_usd: r.cost_usd,
     key_id: r.key_id,
     session_id: r.session_id,
+    project_path: r.project_path,
+    session_title: r.session_title,
     plan: r.plan,
   };
 }
@@ -108,6 +112,8 @@ export function parseUsageResponseDetailed(text: string): UsageParseResult {
       cost_usd: costInt / 100_000_000,
       key_id: readString('keyID'),
       session_id: readString('sessionID'),
+      project_path: readString('projectPath') || readString('directory'),
+      session_title: readString('sessionTitle') || readString('title'),
       plan: plans.get(usgId) ?? null,
     });
   }

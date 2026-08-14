@@ -15,6 +15,7 @@ import type {
   UsageResponse,
   UsageDataHealth,
   UsageSession,
+  ProjectUsageStat,
 } from './types';
 
 const backendPort = typeof window !== 'undefined' && window.electronAPI?.getBackendPort
@@ -188,6 +189,13 @@ export const api = {
       : `&session_id=${encodeURIComponent(sessionId)}`;
     return get<UsageResponse>(path);
   },
+  updateSessionContext: (context: {
+    account_id: string; session_id: string; project_name?: string | null;
+    project_path?: string | null; title?: string | null;
+  }) => put<Record<string, unknown>>('/usage/session-context', context),
+  getProjectUsage: (accountId?: string) => get<{ projects: ProjectUsageStat[] }>(
+    `/analytics/opencode/projects${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ''}`,
+  ),
   syncUsage: (id: string) =>
     post<{ inserted: number; pages_fetched: number; sync_at: string }>(
       `/accounts/opencode/${id}/usage/sync`,

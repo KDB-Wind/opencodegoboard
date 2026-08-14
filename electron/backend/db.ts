@@ -36,6 +36,8 @@ export interface UsageRecordRow {
   cost_usd: number;
   key_id: string | null;
   session_id: string | null;
+  project_path: string | null;
+  session_title: string | null;
   plan: string | null;
   synced_at: string;
 }
@@ -48,6 +50,9 @@ export interface UsageSessionRow {
   account_id: string;
   account_name: string;
   session_id: string | null;
+  project_name: string | null;
+  project_path: string | null;
+  session_title: string | null;
   request_count: number;
   total_input_tokens: number;
   total_output_tokens: number;
@@ -144,6 +149,8 @@ function mapUsage(row: Record<string, unknown>): UsageRecordRow {
     cost_usd: Number(row.cost_usd),
     key_id: row.key_id != null ? String(row.key_id) : null,
     session_id: row.session_id != null ? String(row.session_id) : null,
+    project_path: row.project_path != null ? String(row.project_path) : null,
+    session_title: row.session_title != null ? String(row.session_title) : null,
     plan: row.plan != null ? String(row.plan) : null,
     synced_at: String(row.synced_at),
   };
@@ -171,7 +178,7 @@ interface DbMigration {
   up: (conn: Database.Database) => void;
 }
 
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;
 
 const MIGRATIONS: DbMigration[] = [
   {
@@ -362,6 +369,27 @@ const MIGRATIONS: DbMigration[] = [
       ) VALUES ('default', NULL, NULL, '*', 1, '1970-01-01T00:00:00Z', 'default', '1970-01-01T00:00:00Z');
     `),
   },
+  {
+    version: 7,
+    name: 'session project context',
+    up: (conn) => {
+      const columns = new Set((conn.pragma('table_info(usage_records)') as Array<{ name: string }>).map((column) => column.name));
+      if (!columns.has('project_path')) conn.exec('ALTER TABLE usage_records ADD COLUMN project_path TEXT');
+      if (!columns.has('session_title')) conn.exec('ALTER TABLE usage_records ADD COLUMN session_title TEXT');
+      conn.exec(`
+        CREATE TABLE IF NOT EXISTS session_contexts (
+          account_id TEXT NOT NULL REFERENCES opencode_accounts(id) ON DELETE CASCADE,
+          session_id TEXT NOT NULL,
+          project_name TEXT,
+          project_path TEXT,
+          title TEXT,
+          source TEXT NOT NULL DEFAULT 'manual',
+          updated_at TEXT NOT NULL,
+          PRIMARY KEY(account_id, session_id)
+        );
+      `);
+    },
+  },
 ];
 
 export function getSchemaVersion(conn: Database.Database = getDb()): number {
@@ -412,6 +440,8 @@ export function usageRecordToDict(r: UsageRecordRow): Record<string, unknown> {
     cost_usd: r.cost_usd,
     key_id: r.key_id,
     session_id: r.session_id,
+    project_path: r.project_path,
+    session_title: r.session_title,
     plan: r.plan,
   };
 }
@@ -544,8 +574,9 @@ export function insertUsageRecordsIgnore(
     `INSERT INTO usage_records (
       usg_id, account_id, workspace_id, created_at, model, provider,
       input_tokens, output_tokens, reasoning_tokens, cache_read_tokens, cache_write_5m_tokens,
-      cache_write_1h_tokens, cost_raw, cost_usd, key_id, session_id, plan, synced_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      cache_write_1h_tokens, cost_raw, cost_usd, key_id, session_id, project_path,
+      session_title, plan, synced_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(usg_id) DO UPDATE SET
       input_tokens = excluded.input_tokens,
       output_tokens = excluded.output_tokens,
@@ -556,6 +587,8 @@ export function insertUsageRecordsIgnore(
       cost_raw = excluded.cost_raw,
       cost_usd = excluded.cost_usd,
       session_id = excluded.session_id,
+      project_path = COALESCE(NULLIF(excluded.project_path, ''), usage_records.project_path),
+      session_title = COALESCE(NULLIF(excluded.session_title, ''), usage_records.session_title),
       synced_at = excluded.synced_at`,
   );
   const existingStmt = getDb().prepare('SELECT 1 FROM usage_records WHERE usg_id = ?');
@@ -584,6 +617,8 @@ export function insertUsageRecordsIgnore(
         num(rec.cost_usd),
         rec.key_id ?? null,
         rec.session_id ?? null,
+        rec.project_path ?? null,
+        rec.session_title ?? null,
         rec.plan ?? null,
         syncedAt,
       );
@@ -686,17 +721,20 @@ export function listUsageSessions(opts: {
   const limit = Math.max(1, Math.min(opts.limit ?? 50, 200));
   const where = opts.account_id ? 'WHERE ur.account_id = ?' : '';
   const params: unknown[] = opts.account_id ? [opts.account_id] : [];
-  const grouping = `
+  const baseFrom = `
     FROM usage_records ur
     JOIN opencode_accounts oa ON oa.id = ur.account_id
-    ${where}
-    GROUP BY ur.account_id, oa.name, ur.session_id`;
+    ${where}`;
+  const grouping = `${baseFrom} GROUP BY ur.account_id, oa.name, ur.session_id`;
   const conn = getDb();
   const total = Number(
     (conn.prepare(`SELECT COUNT(*) AS c FROM (SELECT 1 ${grouping})`).get(...params) as { c: number }).c,
   );
   const rows = conn.prepare(`
     SELECT ur.account_id, oa.name AS account_name, ur.session_id,
+      COALESCE(sc.project_name, MAX(NULLIF(ur.project_path, ''))) AS project_name,
+      COALESCE(sc.project_path, MAX(NULLIF(ur.project_path, ''))) AS project_path,
+      COALESCE(sc.title, MAX(NULLIF(ur.session_title, ''))) AS session_title,
       COUNT(*) AS request_count,
       SUM(ur.input_tokens) AS total_input_tokens,
       SUM(ur.output_tokens) AS total_output_tokens,
@@ -705,7 +743,11 @@ export function listUsageSessions(opts: {
       SUM(ur.cost_usd) AS total_cost_usd,
       MIN(ur.created_at) AS first_at,
       MAX(ur.created_at) AS last_at
-    ${grouping}
+    FROM usage_records ur
+    JOIN opencode_accounts oa ON oa.id = ur.account_id
+    LEFT JOIN session_contexts sc ON sc.account_id = ur.account_id AND sc.session_id = ur.session_id
+    ${where}
+    GROUP BY ur.account_id, oa.name, ur.session_id, sc.project_name, sc.project_path, sc.title
     ORDER BY last_at DESC
     LIMIT ? OFFSET ?
   `).all(...params, limit, offset) as Array<Record<string, unknown>>;
@@ -713,6 +755,9 @@ export function listUsageSessions(opts: {
     account_id: String(row.account_id),
     account_name: String(row.account_name),
     session_id: row.session_id != null && String(row.session_id) !== '' ? String(row.session_id) : null,
+    project_name: row.project_name != null ? String(row.project_name) : null,
+    project_path: row.project_path != null ? String(row.project_path) : null,
+    session_title: row.session_title != null ? String(row.session_title) : null,
     request_count: Number(row.request_count),
     total_input_tokens: Number(row.total_input_tokens),
     total_output_tokens: Number(row.total_output_tokens),
@@ -752,6 +797,62 @@ export function listSessionUsageRecords(opts: {
     LIMIT ? OFFSET ?
   `).all(...params, limit, offset) as Array<Record<string, unknown>>;
   return [rows.map((row) => ({ ...mapUsage(row), account_name: String(row.account_name) })), total];
+}
+
+export function upsertSessionContext(input: {
+  account_id: string; session_id: string; project_name?: string | null;
+  project_path?: string | null; title?: string | null;
+}): Record<string, unknown> {
+  getDb().prepare(`
+    INSERT INTO session_contexts (account_id, session_id, project_name, project_path, title, source, updated_at)
+    VALUES (?, ?, ?, ?, ?, 'manual', ?)
+    ON CONFLICT(account_id, session_id) DO UPDATE SET
+      project_name = excluded.project_name, project_path = excluded.project_path,
+      title = excluded.title, source = 'manual', updated_at = excluded.updated_at
+  `).run(input.account_id, input.session_id, input.project_name || null,
+    input.project_path || null, input.title || null, nowIso());
+  return getDb().prepare('SELECT * FROM session_contexts WHERE account_id = ? AND session_id = ?')
+    .get(input.account_id, input.session_id) as Record<string, unknown>;
+}
+
+export function listProjectUsageStats(accountId?: string): Array<Record<string, unknown>> {
+  const rows = getDb().prepare(`
+    SELECT COALESCE(NULLIF(sc.project_name, ''), NULLIF(sc.project_path, ''), NULLIF(ur.project_path, ''), 'Unassigned') AS project_name,
+      COALESCE(NULLIF(sc.project_path, ''), NULLIF(ur.project_path, '')) AS project_path,
+      ur.model, COUNT(*) AS request_count,
+      COUNT(DISTINCT NULLIF(ur.session_id, '')) AS session_count,
+      SUM(ur.cost_usd) AS total_cost_usd,
+      SUM(ur.input_tokens + ur.output_tokens + ur.reasoning_tokens + ur.cache_read_tokens + ur.cache_write_5m_tokens + ur.cache_write_1h_tokens) AS total_tokens,
+      SUM(ur.cache_read_tokens) AS cache_read_tokens,
+      SUM(ur.input_tokens + ur.cache_read_tokens + ur.cache_write_5m_tokens + ur.cache_write_1h_tokens) AS total_input_tokens
+    FROM usage_records ur
+    LEFT JOIN session_contexts sc ON sc.account_id = ur.account_id AND sc.session_id = ur.session_id
+    ${accountId ? 'WHERE ur.account_id = ?' : ''}
+    GROUP BY 1, 2, ur.model
+    ORDER BY total_cost_usd DESC
+  `).all(...(accountId ? [accountId] : [])) as Array<Record<string, unknown>>;
+  const projects = new Map<string, Record<string, unknown>>();
+  for (const row of rows) {
+    const key = `${row.project_name}\u0000${row.project_path || ''}`;
+    const project = projects.get(key) ?? {
+      project_name: String(row.project_name), project_path: row.project_path != null ? String(row.project_path) : null,
+      request_count: 0, session_count: 0, total_cost_usd: 0, total_tokens: 0,
+      cache_read_tokens: 0, total_input_tokens: 0, models: [],
+    };
+    for (const field of ['request_count', 'session_count', 'total_cost_usd', 'total_tokens', 'cache_read_tokens', 'total_input_tokens']) {
+      project[field] = Number(project[field]) + Number(row[field] || 0);
+    }
+    (project.models as Array<Record<string, unknown>>).push({
+      model: String(row.model), request_count: Number(row.request_count),
+      total_tokens: Number(row.total_tokens), total_cost_usd: Number(row.total_cost_usd),
+    });
+    projects.set(key, project);
+  }
+  return [...projects.values()].map((project) => ({
+    ...project, total_cost_usd: Math.round(Number(project.total_cost_usd) * 1e6) / 1e6,
+    cache_hit_rate: Number(project.total_input_tokens) > 0
+      ? Math.round(Number(project.cache_read_tokens) / Number(project.total_input_tokens) * 1000) / 10 : 0,
+  })).sort((a, b) => Number(b.total_cost_usd) - Number(a.total_cost_usd));
 }
 
 export function opencodeDailyStats(days = 30, accountId?: string | null): Record<string, unknown>[] {
