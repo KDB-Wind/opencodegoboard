@@ -81,6 +81,8 @@ pub fn load_settings(path:&Path)->Value{Connection::open(path).ok().and_then(|co
 
 pub fn migrate_legacy_credentials(path:&Path)->Result<usize,String>{let conn=Connection::open(path).map_err(|e|e.to_string())?;let rows:Vec<(String,String)>=conn.prepare("SELECT id,auth_cookie FROM opencode_accounts WHERE auth_cookie LIKE 'enc:%'").map_err(|e|e.to_string())?.query_map([],|row|Ok((row.get(0)?,row.get(1)?))).map_err(|e|e.to_string())?.collect::<Result<_,_>>().map_err(|e|e.to_string())?;let mut migrated=0;for(id,stored)in rows{if let Ok(secret)=crate::secrets::decrypt_electron(&stored){crate::secrets::set(&id,&secret)?;conn.execute("UPDATE opencode_accounts SET auth_cookie='keyring',updated_at=? WHERE id=?",params![now(),id]).map_err(|e|e.to_string())?;migrated+=1}}Ok(migrated)}
 
+pub fn enabled_account_ids(path:&Path)->Result<Vec<String>,String>{let conn=Connection::open(path).map_err(|e|e.to_string())?;let mut statement=conn.prepare("SELECT id FROM opencode_accounts WHERE enabled=1 ORDER BY created_at").map_err(|e|e.to_string())?;let ids=statement.query_map([],|row|row.get(0)).map_err(|e|e.to_string())?.collect::<Result<_,_>>().map_err(|e|e.to_string())?;Ok(ids)}
+
 fn account_view(row: Value) -> Value {
     let mut object = row.as_object().cloned().unwrap_or_default();
     let id=object.get("id").and_then(Value::as_str).unwrap_or_default();let stored=object.get("auth_cookie").and_then(Value::as_str).unwrap_or_default();
