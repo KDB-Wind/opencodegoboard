@@ -7,6 +7,7 @@ import { useToast } from '../components/Toast';
 import { useTheme } from '../components/ThemeProvider';
 import { About } from './About';
 import type { OpenCodeAccount } from '../api/types';
+import { loadQuotaNotificationSettings, saveQuotaNotificationSettings, type NotificationThreshold } from '../lib/quotaNotifications';
 
 function BackendStatus() {
   const { t } = useTranslation();
@@ -96,6 +97,7 @@ export function Settings() {
   const [backfillMode, setBackfillMode] = useState<'days' | 'until' | 'all'>('days');
   const [backfillDays, setBackfillDays] = useState(90);
   const [backfillUntil, setBackfillUntil] = useState('');
+  const [quotaNotifications, setQuotaNotifications] = useState(loadQuotaNotificationSettings);
   const syncConfigLoadedRef = useRef(false);
   useEffect(() => {
     if (config?.usage_sync && !syncConfigLoadedRef.current) {
@@ -361,6 +363,22 @@ export function Settings() {
     }
   };
 
+  const setNotificationEnabled = async (enabled: boolean) => {
+    if (enabled && typeof Notification !== 'undefined' && Notification.permission !== 'granted') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+    }
+    const next = { ...quotaNotifications, enabled };
+    setQuotaNotifications(next);
+    saveQuotaNotificationSettings(next);
+  };
+
+  const setNotificationThreshold = (threshold: NotificationThreshold) => {
+    const next = { ...quotaNotifications, threshold };
+    setQuotaNotifications(next);
+    saveQuotaNotificationSettings(next);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -447,6 +465,19 @@ export function Settings() {
             checked={trayMode}
             onChange={(e) => handleTrayChange(e.target.checked)}
           />
+        </div>
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-base-200">
+          <div>
+            <div className="text-sm text-base-content/70">{t('settings.quotaNotifications')}</div>
+            <div className="text-xs text-muted mt-0.5">{t('settings.quotaNotificationsDesc')}</div>
+          </div>
+          <div className="flex items-center gap-3">
+            <select className="select select-bordered select-sm" value={quotaNotifications.threshold} onChange={(event) => setNotificationThreshold(event.target.value as NotificationThreshold)}>
+              <option value="critical">{t('settings.notifyCritical')}</option>
+              <option value="warning">{t('settings.notifyWarning')}</option>
+            </select>
+            <input type="checkbox" className="toggle toggle-sm" checked={quotaNotifications.enabled} onChange={(event) => void setNotificationEnabled(event.target.checked)} />
+          </div>
         </div>
       </div>
 

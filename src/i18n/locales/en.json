@@ -114,6 +114,7 @@
     ,"recommendModel": "Model: {{model}} (weight {{weight}})"
     ,"reason_best_safe_headroom": "best safe headroom"
     ,"reason_least_risk_among_critical": "all accounts are at risk; this is the least risky"
+    ,"notificationTitle": "OpenCode Go quota alert"
   },
   "tokenStats": {
     "title": "Usage Stats",
@@ -200,6 +201,10 @@
     "dark": "Dark",
     "system": "System",
     "systemSection": "System",
+    "quotaNotifications": "Quota desktop alerts",
+    "quotaNotificationsDesc": "Off by default; alerts once when the selected risk level is reached",
+    "notifyCritical": "Critical only",
+    "notifyWarning": "Warning and critical",
     "tray": "Minimize to System Tray",
     "trayDesc": "Hide to tray when closing window instead of quitting",
     "accounts": "OpenCode Accounts",

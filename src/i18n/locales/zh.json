@@ -114,6 +114,7 @@
     ,"recommendModel": "建议模型：{{model}}（权重 {{weight}}）"
     ,"reason_best_safe_headroom": "安全余量最大"
     ,"reason_least_risk_among_critical": "所有账户均有风险，当前相对最优"
+    ,"notificationTitle": "OpenCode Go 额度提醒"
   },
   "tokenStats": {
     "title": "用量统计",
@@ -200,6 +201,10 @@
     "dark": "深色",
     "system": "跟随系统",
     "systemSection": "系统",
+    "quotaNotifications": "额度桌面提醒",
+    "quotaNotificationsDesc": "默认关闭；仅在达到选择的风险级别时提醒一次",
+    "notifyCritical": "仅紧急",
+    "notifyWarning": "关注及紧急",
     "tray": "最小化到系统托盘",
     "trayDesc": "关闭窗口时隐藏到托盘，而非退出",
     "accounts": "OpenCode 账户",

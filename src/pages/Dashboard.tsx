@@ -8,6 +8,7 @@ import { UsageTable } from '../components/UsageTable';
 import { TokenBreakdownTooltip } from '../components/TokenBreakdownTooltip';
 import { useToast } from '../components/Toast';
 import { getStoredTimeRange, storeTimeRange, TimeRangeTabs, type TimeRange } from '../components/TimeRangeTabs';
+import { notifyQuotaAlert } from '../lib/quotaNotifications';
 import type { QuotaWindow } from '../api/types';
 
 function fmt(v: number) {
@@ -211,6 +212,9 @@ export function Dashboard() {
   const quotaIntelligence = data?.quota_intelligence ?? [];
   const reconciliationEvents = (data?.quota_reconciliation ?? []).filter((event) => event.event_type !== 'matched');
   const recommendation = data?.recommendations;
+  useEffect(() => {
+    void notifyQuotaAlert(quotaIntelligence, t('dashboard.notificationTitle'));
+  }, [quotaIntelligence, t]);
   const tokenBreakdown = {
     uncachedInput: tokens.reduce((s, m) => s + Number(m.uncached_input_tokens ?? m.total_input_tokens ?? 0), 0),
     cacheHit: tokens.reduce((s, m) => s + Number(m.cache_hit_tokens ?? 0), 0),
