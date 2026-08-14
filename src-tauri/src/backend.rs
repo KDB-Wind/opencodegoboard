@@ -209,3 +209,14 @@ fn dynamic_route(conn:&Connection,request:&ApiRequest,path:&str,url:&Url)->Resul
 
 #[tauri::command]
 pub async fn api_request(state: tauri::State<'_,BackendState>, request: ApiRequest) -> Result<Value,String>{route(&state,&request).await}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use std::time::Instant;
+  #[test]
+  #[ignore = "manual performance baseline"]
+  fn benchmark_100k() {
+    let directory=tempfile::tempdir().unwrap();let path=directory.path().join("benchmark.db");initialize(&path).unwrap();let mut conn=Connection::open(&path).unwrap();let started=Instant::now();let tx=conn.transaction().unwrap();{let mut insert=tx.prepare("INSERT INTO opencode_accounts(id,name,workspace_id,auth_cookie,created_at,updated_at) VALUES('a','A','Default','',?,?) ON CONFLICT DO NOTHING").unwrap();insert.execute(params![now(),now()]).unwrap();let mut usage=tx.prepare("INSERT INTO usage_records(usg_id,account_id,workspace_id,created_at,model,input_tokens,output_tokens,cost_raw,cost_usd,synced_at) VALUES(?,'a','w',?, ?,1000,300,1,0.0001,?)").unwrap();for index in 0..100_000{usage.execute(params![format!("u{index}"),Utc::now().to_rfc3339(),format!("model-{}",index%12),now()]).unwrap();}}tx.commit().unwrap();let insert_ms=started.elapsed().as_secs_f64()*1000.0;let mut durations=vec![];for _ in 0..25{let started=Instant::now();let _:Vec<Value>=query_json(&conn,"SELECT model,SUM(cost_usd),SUM(input_tokens+output_tokens),COUNT(*) FROM usage_records WHERE account_id='a' GROUP BY model ORDER BY SUM(cost_usd) DESC",&[]).unwrap();durations.push(started.elapsed().as_secs_f64()*1000.0);}durations.sort_by(f64::total_cmp);println!("{}",json!({"rows":100000,"insert_ms":insert_ms,"aggregation_ms":{"median":durations[durations.len()/2],"p95":durations[(durations.len()as f64*0.95)as usize]}}));
+  }
+}

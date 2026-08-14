@@ -27,7 +27,6 @@
   },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": true,
     "targets": ["nsis"],
     "icon": ["../public/icon.ico"],
     "windows": {

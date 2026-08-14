@@ -4,11 +4,11 @@
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.simpleicons.org https://www.google.com; font-src 'self' data:; connect-src 'self' http://127.0.0.1:* http://localhost:* https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'self'"
+      content="default-src 'self' ipc: http://ipc.localhost; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost; object-src 'none'; base-uri 'none'; form-action 'self'"
     />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>OpenCodeBoard</title>
+    <title>OpenCodeGoBoard</title>
   </head>
   <body>
     <div id="root"></div>

@@ -19,38 +19,14 @@ import type {
   ProjectUsageStat,
 } from './types';
 import { invoke } from '@tauri-apps/api/core';
-import { isTauri } from '../lib/desktop';
-
-const backendPort = typeof window !== 'undefined' && window.electronAPI?.getBackendPort
-  ? window.electronAPI.getBackendPort()
-  : 8788;
-const backendToken = typeof window !== 'undefined' && window.electronAPI?.getBackendToken
-  ? window.electronAPI.getBackendToken()
-  : '';
-const BASE = (import.meta.env.VITE_API_BASE || `http://127.0.0.1:${backendPort}`) + '/api';
-
-function authHeaders(extra?: Record<string, string>): Record<string, string> {
-  return {
-    ...(backendToken ? { Authorization: `Bearer ${backendToken}` } : {}),
-    ...extra,
-  };
-}
 
 const GET_CACHE_TTL_MS = 3000;
 const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
 const inFlightGets = new Map<string, Promise<unknown>>();
 
 async function fetchGet<T>(path: string, signal?: AbortSignal): Promise<T> {
-  if (isTauri) {
-    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-    return invoke<T>('api_request', { request: { method: 'GET', path, body: null } });
-  }
-  const res = await fetch(`${BASE}${path}`, { headers: authHeaders(), signal });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`${res.status} ${res.statusText}${text ? ': ' + text : ''}`);
-  }
-  return res.json();
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  return invoke<T>('api_request', { request: { method: 'GET', path, body: null } });
 }
 
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
@@ -81,57 +57,24 @@ async function put<T>(path: string, body?: unknown): Promise<T> {
 }
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
-  if (isTauri) {
-    const result = await invoke<T>('api_request', { request: { method, path, body: body ?? null } });
-    responseCache.clear();
-    return result;
-  }
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers: authHeaders(body ? { 'Content-Type': 'application/json' } : undefined),
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`${res.status} ${res.statusText}${text ? ': ' + text : ''}`);
-  }
+  const result = await invoke<T>('api_request', { request: { method, path, body: body ?? null } });
   responseCache.clear();
-  return res.json();
+  return result;
 }
 
 async function del<T>(path: string): Promise<T> {
-  if (isTauri) {
-    const result = await invoke<T>('api_request', { request: { method: 'DELETE', path, body: null } });
-    responseCache.clear();
-    return result;
-  }
-  const res = await fetch(`${BASE}${path}`, { method: 'DELETE', headers: authHeaders() });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`${res.status} ${res.statusText}${text ? ': ' + text : ''}`);
-  }
+  const result = await invoke<T>('api_request', { request: { method: 'DELETE', path, body: null } });
   responseCache.clear();
-  return res.json();
+  return result;
 }
 
 async function download(path: string, filename: string): Promise<void> {
-  if (isTauri) {
-    const payload = await invoke<{ base64: string; mime: string; filename?: string }>('api_request', { request: { method: 'GET', path, body: null } });
-    const bytes = Uint8Array.from(atob(payload.base64), (char) => char.charCodeAt(0));
-    const url = URL.createObjectURL(new Blob([bytes], { type: payload.mime }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = payload.filename || filename;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    return;
-  }
-  const res = await fetch(`${BASE}${path}`, { headers: authHeaders() });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  const url = URL.createObjectURL(await res.blob());
+  const payload = await invoke<{ base64: string; mime: string; filename?: string }>('api_request', { request: { method: 'GET', path, body: null } });
+  const bytes = Uint8Array.from(atob(payload.base64), (char) => char.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: payload.mime }));
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = filename;
+  anchor.download = payload.filename || filename;
   anchor.click();
   URL.revokeObjectURL(url);
 }
@@ -281,24 +224,13 @@ export const api = {
   backupDatabase: () => download('/data/backup', 'opencodegoboard-backup.db'),
   downloadDiagnostics: () => download('/data/diagnostics', 'opencodegoboard-diagnostics.json'),
   restoreDatabase: async (file: File) => {
-    if (isTauri) {
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      let binary = '';
-      for (const byte of bytes) binary += String.fromCharCode(byte);
-      const result = await invoke<{ ok: boolean; schema_version: number }>('api_request', {
-        request: { method: 'POST', path: '/data/restore', body: { base64: btoa(binary) } },
-      });
-      responseCache.clear();
-      return result;
-    }
-    const res = await fetch(`${BASE}/data/restore`, {
-      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/octet-stream' }), body: file,
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    const result = await invoke<{ ok: boolean; schema_version: number }>('api_request', {
+      request: { method: 'POST', path: '/data/restore', body: { base64: btoa(binary) } },
     });
-    if (!res.ok) {
-      const payload = await res.json().catch(() => ({})) as { detail?: string };
-      throw new Error(payload.detail || `${res.status} ${res.statusText}`);
-    }
     responseCache.clear();
-    return res.json() as Promise<{ ok: boolean; schema_version: number }>;
+    return result;
   },
 };

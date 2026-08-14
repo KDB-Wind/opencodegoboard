@@ -4,40 +4,30 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
 export const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-const electron = typeof window !== 'undefined' ? window.electronAPI : undefined;
 
 export const desktop = {
-  platform: isTauri ? 'win32' : electron?.platform ?? 'web',
-  getVersion: () => isTauri ? getVersion() : electron?.getVersion() ?? Promise.resolve('dev'),
-  getName: () => isTauri ? getName() : electron?.getName() ?? Promise.resolve('OpenCodeGoBoard'),
-  minimize: () => isTauri ? getCurrentWindow().minimize() : electron?.window.minimize(),
-  maximize: async () => { if (isTauri) return getCurrentWindow().toggleMaximize(); electron?.window.maximize(); },
-  isMaximized: () => isTauri ? getCurrentWindow().isMaximized() : electron?.window.isMaximized() ?? Promise.resolve(false),
-  close: () => isTauri ? invoke<string>('request_close') : electron?.window.close() ?? Promise.resolve('quit'),
-  closeConfirm: (action: string) => isTauri ? invoke<string>('close_confirm', { action }) : electron?.closeConfirm(action) ?? Promise.resolve(action),
-  openExternal: (url: string) => isTauri ? invoke<void>('open_external', { url }) : electron?.openExternal(url) ?? Promise.resolve(),
-  restartBackend: () => isTauri ? Promise.resolve(true) : electron?.restartBackend() ?? Promise.resolve(false),
-  loginOpenCode: () => isTauri
-    ? Promise.resolve({ status: 'error', error: '请使用系统浏览器登录并手动粘贴凭据' } as const)
-    : electron?.loginOpenCode() ?? Promise.resolve({ status: 'error', error: 'desktop API unavailable' } as const),
-  loginOpenCodeSystem: () => isTauri ? invoke<boolean>('open_opencode_login') : electron?.loginOpenCodeSystem() ?? Promise.resolve(false),
-  installUpdate: () => isTauri ? invoke<boolean>('install_update') : Promise.resolve(false),
-  getTrayMode: () => isTauri ? invoke<boolean>('get_tray_mode') : electron?.getTrayMode() ?? Promise.resolve(false),
-  setTrayMode: (enabled: boolean) => isTauri ? invoke<boolean>('set_tray_mode', { enabled }) : electron?.setTrayMode(enabled) ?? Promise.resolve(false),
+  platform: navigator.userAgent.includes('Windows') ? 'win32' : 'other',
+  getVersion,
+  getName,
+  minimize: () => getCurrentWindow().minimize(),
+  maximize: () => getCurrentWindow().toggleMaximize(),
+  isMaximized: () => getCurrentWindow().isMaximized(),
+  close: () => invoke<string>('request_close'),
+  closeConfirm: (action: string) => invoke<string>('close_confirm', { action }),
+  openExternal: (url: string) => invoke<void>('open_external', { url }),
+  restartBackend: () => Promise.resolve(true),
+  loginOpenCodeSystem: () => invoke<boolean>('open_opencode_login'),
+  installUpdate: () => invoke<boolean>('install_update'),
+  getTrayMode: () => invoke<boolean>('get_tray_mode'),
+  setTrayMode: (enabled: boolean) => invoke<boolean>('set_tray_mode', { enabled }),
   onCloseDialogRequest: (callback: () => void) => {
-    if (isTauri) {
-      let unlisten: (() => void) | undefined;
-      void listen('close-dialog-request', callback).then((fn) => { unlisten = fn; });
-      return () => unlisten?.();
-    }
-    return electron?.onCloseDialogRequest(callback) ?? (() => {});
+    let unlisten: (() => void) | undefined;
+    void listen('close-dialog-request', callback).then((fn) => { unlisten = fn; });
+    return () => unlisten?.();
   },
   onMaximizedChange: (callback: (maximized: boolean) => void) => {
-    if (isTauri) {
-      let unlisten: (() => void) | undefined;
-      void getCurrentWindow().onResized(async () => callback(await getCurrentWindow().isMaximized())).then((fn) => { unlisten = fn; });
-      return () => unlisten?.();
-    }
-    return electron?.onMaximizedChange(callback) ?? (() => {});
+    let unlisten: (() => void) | undefined;
+    void getCurrentWindow().onResized(async () => callback(await getCurrentWindow().isMaximized())).then((fn) => { unlisten = fn; });
+    return () => unlisten?.();
   },
 };

@@ -1,6 +1,6 @@
 # Performance baseline
 
-Run `pnpm benchmark:db` to create a disposable 100,000-row SQLite database and measure representative daily, model and project aggregations. Run `pnpm benchmark:startup -- <packaged-executable>` on Windows to measure time to the first window and the settled process working set.
+Run `pnpm benchmark:db` to create a disposable 100,000-row database through the Rust SQLite layer and measure representative aggregation. Run `pnpm benchmark:startup -- <packaged-executable>` on Windows to measure time to the first window and the settled process working set.
 
 Release gates:
 
@@ -10,7 +10,7 @@ Release gates:
 
 Results are machine-dependent and must be captured from the final Tauri executable; the roadmap item remains open until those final measurements are recorded here.
 
-## 2026-08-15 development-machine database baseline
+## 2026-08-15 pre-migration Node database baseline
 
 - Rows: 100,000
 - Transactional fixture insertion: 924.32 ms
