@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use chrono::{SecondsFormat, Utc};
+use chrono::{Duration, NaiveDate, SecondsFormat, Utc};
 use rusqlite::{params, params_from_iter, types::{Value as SqlValue, ValueRef}, Connection};
 use serde::Deserialize;
 use serde_json::{json, Map, Value};
@@ -55,6 +55,15 @@ pub fn initialize(path: &Path) -> Result<(), String> {
     conn.execute_batch("PRAGMA foreign_keys=ON; PRAGMA journal_mode=WAL;").map_err(|e| e.to_string())?;
     let installed: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0)).map_err(|e| e.to_string())?;
     if installed > SCHEMA_VERSION { return Err(format!("database schema {installed} is newer than supported {SCHEMA_VERSION}")); }
+    conn.execute_batch(r#"
+      CREATE TABLE IF NOT EXISTS opencode_accounts (id TEXT PRIMARY KEY,name TEXT NOT NULL,workspace_id TEXT NOT NULL DEFAULT 'Default',resolved_workspace_id TEXT,auth_cookie TEXT NOT NULL,show_rolling INTEGER NOT NULL DEFAULT 1,show_weekly INTEGER NOT NULL DEFAULT 1,show_monthly INTEGER NOT NULL DEFAULT 1,enabled INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS usage_records (usg_id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES opencode_accounts(id) ON DELETE CASCADE,workspace_id TEXT NOT NULL,created_at TEXT NOT NULL,model TEXT NOT NULL,provider TEXT,input_tokens INTEGER NOT NULL,output_tokens INTEGER NOT NULL,cache_read_tokens INTEGER NOT NULL DEFAULT 0,cache_write_5m_tokens INTEGER NOT NULL DEFAULT 0,cache_write_1h_tokens INTEGER NOT NULL DEFAULT 0,cost_raw INTEGER NOT NULL,cost_usd REAL NOT NULL,key_id TEXT,plan TEXT,synced_at TEXT NOT NULL,reasoning_tokens INTEGER NOT NULL DEFAULT 0,session_id TEXT,project_path TEXT,session_title TEXT);
+      CREATE TABLE IF NOT EXISTS usage_sync_state (account_id TEXT PRIMARY KEY REFERENCES opencode_accounts(id) ON DELETE CASCADE,last_sync_at TEXT,last_sync_status TEXT,last_sync_error TEXT,last_inserted_count INTEGER NOT NULL DEFAULT 0,deepest_page_fetched INTEGER NOT NULL DEFAULT -1,total_records INTEGER NOT NULL DEFAULT 0,oldest_record_at TEXT,newest_record_at TEXT,last_success_at TEXT,last_failed_page INTEGER,last_parse_error_count INTEGER NOT NULL DEFAULT 0);
+    "#).map_err(|e|e.to_string())?;
+    let usage_columns:Vec<String>=conn.prepare("PRAGMA table_info(usage_records)").map_err(|e|e.to_string())?.query_map([],|row|row.get(1)).map_err(|e|e.to_string())?.collect::<Result<_,_>>().map_err(|e|e.to_string())?;
+    for(name,declaration)in [("reasoning_tokens","INTEGER NOT NULL DEFAULT 0"),("session_id","TEXT"),("project_path","TEXT"),("session_title","TEXT")]{if !usage_columns.iter().any(|column|column==name){conn.execute(&format!("ALTER TABLE usage_records ADD COLUMN {name} {declaration}"),[]).map_err(|e|e.to_string())?;}}
+    let sync_columns:Vec<String>=conn.prepare("PRAGMA table_info(usage_sync_state)").map_err(|e|e.to_string())?.query_map([],|row|row.get(1)).map_err(|e|e.to_string())?.collect::<Result<_,_>>().map_err(|e|e.to_string())?;
+    for(name,declaration)in [("last_success_at","TEXT"),("last_failed_page","INTEGER"),("last_parse_error_count","INTEGER NOT NULL DEFAULT 0")]{if !sync_columns.iter().any(|column|column==name){conn.execute(&format!("ALTER TABLE usage_sync_state ADD COLUMN {name} {declaration}"),[]).map_err(|e|e.to_string())?;}}
     conn.execute_batch(r#"
       CREATE TABLE IF NOT EXISTS opencode_accounts (id TEXT PRIMARY KEY,name TEXT NOT NULL,workspace_id TEXT NOT NULL DEFAULT 'Default',resolved_workspace_id TEXT,auth_cookie TEXT NOT NULL,show_rolling INTEGER NOT NULL DEFAULT 1,show_weekly INTEGER NOT NULL DEFAULT 1,show_monthly INTEGER NOT NULL DEFAULT 1,enabled INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS usage_records (usg_id TEXT PRIMARY KEY,account_id TEXT NOT NULL REFERENCES opencode_accounts(id) ON DELETE CASCADE,workspace_id TEXT NOT NULL,created_at TEXT NOT NULL,model TEXT NOT NULL,provider TEXT,input_tokens INTEGER NOT NULL,output_tokens INTEGER NOT NULL,cache_read_tokens INTEGER NOT NULL DEFAULT 0,cache_write_5m_tokens INTEGER NOT NULL DEFAULT 0,cache_write_1h_tokens INTEGER NOT NULL DEFAULT 0,cost_raw INTEGER NOT NULL,cost_usd REAL NOT NULL,key_id TEXT,plan TEXT,synced_at TEXT NOT NULL,reasoning_tokens INTEGER NOT NULL DEFAULT 0,session_id TEXT,project_path TEXT,session_title TEXT);
@@ -158,7 +167,28 @@ async fn route(state:&BackendState, request:&ApiRequest)->Result<Value,String>{
     if request.method=="POST"&&path=="/data/restore"{let encoded=request.body.as_ref().and_then(|v|v["base64"].as_str()).ok_or("backup payload required")?;let bytes=BASE64.decode(encoded).map_err(|e|e.to_string())?;if bytes.len()<16||&bytes[..16]!=b"SQLite format 3\0"{return Err("invalid SQLite backup".into())}let candidate=state.db_path.with_extension("restore.db");fs::write(&candidate,&bytes).map_err(|e|e.to_string())?;let check=Connection::open(&candidate).map_err(|e|e.to_string())?;let integrity:String=check.query_row("PRAGMA integrity_check",[],|r|r.get(0)).map_err(|e|e.to_string())?;let version:i64=check.query_row("PRAGMA user_version",[],|r|r.get(0)).map_err(|e|e.to_string())?;drop(check);if integrity!="ok"||version>SCHEMA_VERSION{let _=fs::remove_file(&candidate);return Err("backup integrity or schema validation failed".into())}fs::copy(&state.db_path,state.db_path.with_extension("before-restore.db")).map_err(|e|e.to_string())?;fs::copy(&candidate,&state.db_path).map_err(|e|e.to_string())?;fs::remove_file(candidate).map_err(|e|e.to_string())?;return Ok(json!({"ok":true,"schema_version":version}))}
     let conn=Connection::open(&state.db_path).map_err(|e|e.to_string())?; conn.pragma_update(None,"foreign_keys","ON").map_err(|e|e.to_string())?;
     let parts:Vec<&str>=path.trim_matches('/').split('/').collect();
-    if request.method=="POST"&&parts.len()>=5&&parts[0]=="accounts"&&parts[1]=="opencode"&&parts[3]=="usage"&&(parts[4]=="sync"||parts[4]=="backfill"){let id=parts[2].to_string();let max=if parts[4]=="backfill"{100}else{30};drop(conn);return crate::usage::sync(&state.db_path,&id,max).await}
+    if request.method=="GET"&&path=="/usage/sessions" {
+        let account=qp("account_id");
+        let mut args=vec![];
+        let where_sql=if let Some(id)=account{args.push(json!(id));"WHERE ur.account_id=?"}else{""};
+        let total_sql=format!("SELECT COUNT(*) total FROM (SELECT 1 FROM usage_records ur {where_sql} GROUP BY ur.account_id,ur.session_id)");
+        let total=one(&conn,&total_sql,&args)?["total"].as_i64().unwrap_or(0);
+        let limit=qp("limit").and_then(|v|v.parse::<i64>().ok()).unwrap_or(50).clamp(1,200);
+        let offset=qp("offset").and_then(|v|v.parse::<i64>().ok()).unwrap_or(0).max(0);
+        let sql=format!(r#"SELECT ur.account_id,oa.name account_name,NULLIF(ur.session_id,'') session_id,COALESCE(sc.project_name,MAX(NULLIF(ur.project_path,''))) project_name,COALESCE(sc.project_path,MAX(NULLIF(ur.project_path,''))) project_path,COALESCE(sc.title,MAX(NULLIF(ur.session_title,''))) session_title,COUNT(*) request_count,SUM(ur.input_tokens) total_input_tokens,SUM(ur.output_tokens) total_output_tokens,SUM(ur.reasoning_tokens) total_reasoning_tokens,SUM(ur.cache_read_tokens) total_cache_read_tokens,SUM(ur.cost_usd) total_cost_usd,MIN(ur.created_at) first_at,MAX(ur.created_at) last_at FROM usage_records ur JOIN opencode_accounts oa ON oa.id=ur.account_id LEFT JOIN session_contexts sc ON sc.account_id=ur.account_id AND sc.session_id=ur.session_id {where_sql} GROUP BY ur.account_id,oa.name,ur.session_id ORDER BY last_at DESC LIMIT ? OFFSET ?"#);
+        args.push(json!(limit));args.push(json!(offset));
+        return Ok(json!({"total":total,"sessions":query_json(&conn,&sql,&args)?,"offset":offset,"limit":limit}));
+    }
+    if request.method=="POST"&&parts.len()>=5&&parts[0]=="accounts"&&parts[1]=="opencode"&&parts[3]=="usage"&&(parts[4]=="sync"||parts[4]=="backfill"){
+        let id=parts[2].to_string();
+        let (max,stop_at)=if parts[4]=="sync"{(30,None)}else{match qp("mode").as_deref().unwrap_or("days"){
+            "all"=>(10_000,None),
+            "until"=>{let value=qp("until").ok_or("until is required")?;let date=NaiveDate::parse_from_str(&value,"%Y-%m-%d").map_err(|_|"until must use YYYY-MM-DD")?;(10_000,Some(format!("{}T00:00:00Z",date.format("%Y-%m-%d"))))},
+            "days"=>{let days=qp("days").and_then(|v|v.parse::<i64>().ok()).unwrap_or(90).clamp(1,3650);(10_000,Some((Utc::now()-Duration::days(days)).to_rfc3339_opts(SecondsFormat::Secs,true)))},
+            _=>return Err("unknown backfill mode".into())
+        }};
+        drop(conn);return crate::usage::sync(&state.db_path,&id,max,stop_at.as_deref()).await
+    }
     if parts.len()==4&&parts[0]=="accounts"&&parts[1]=="opencode"&&(parts[3]=="test"||parts[3]=="quota") {let id=parts[2];let rows=quota_accounts(&conn)?;let Some(account)=rows.into_iter().find(|a|a.id==id)else{return Err("account not found".into())};drop(conn);let value=quota::fetch(account,0).await;if parts[3]=="test"{return Ok(if value["success"].as_bool()==Some(true){json!({"success":true,"workspace_id":value["workspace_id"]})}else{json!({"success":false,"error":value["error"]})})}return Ok(value)}
     match (request.method.as_str(),path) {
       ("GET","/health")=>Ok(json!({"status":"ok","transport":"tauri-ipc"})),
@@ -214,6 +244,10 @@ pub async fn api_request(state: tauri::State<'_,BackendState>, request: ApiReque
 mod tests {
   use super::*;
   use std::time::Instant;
+  #[test]
+  fn migrates_legacy_usage_columns() {
+    let directory=tempfile::tempdir().unwrap();let path=directory.path().join("legacy.db");let conn=Connection::open(&path).unwrap();conn.execute_batch("CREATE TABLE opencode_accounts(id TEXT PRIMARY KEY,name TEXT NOT NULL,workspace_id TEXT NOT NULL,resolved_workspace_id TEXT,auth_cookie TEXT NOT NULL,show_rolling INTEGER NOT NULL DEFAULT 1,show_weekly INTEGER NOT NULL DEFAULT 1,show_monthly INTEGER NOT NULL DEFAULT 1,enabled INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);CREATE TABLE usage_records(usg_id TEXT PRIMARY KEY,account_id TEXT NOT NULL,workspace_id TEXT NOT NULL,created_at TEXT NOT NULL,model TEXT NOT NULL,provider TEXT,input_tokens INTEGER NOT NULL,output_tokens INTEGER NOT NULL,cache_read_tokens INTEGER NOT NULL DEFAULT 0,cache_write_5m_tokens INTEGER NOT NULL DEFAULT 0,cache_write_1h_tokens INTEGER NOT NULL DEFAULT 0,cost_raw INTEGER NOT NULL,cost_usd REAL NOT NULL,key_id TEXT,plan TEXT,synced_at TEXT NOT NULL);CREATE TABLE usage_sync_state(account_id TEXT PRIMARY KEY,last_sync_at TEXT,last_sync_status TEXT,last_sync_error TEXT,last_inserted_count INTEGER NOT NULL DEFAULT 0,deepest_page_fetched INTEGER NOT NULL DEFAULT -1,total_records INTEGER NOT NULL DEFAULT 0,oldest_record_at TEXT,newest_record_at TEXT);PRAGMA user_version=1;").unwrap();drop(conn);initialize(&path).unwrap();let conn=Connection::open(&path).unwrap();let columns:Vec<String>=conn.prepare("PRAGMA table_info(usage_records)").unwrap().query_map([],|row|row.get(1)).unwrap().collect::<Result<_,_>>().unwrap();assert!(columns.contains(&"reasoning_tokens".into()));assert!(columns.contains(&"project_path".into()));assert_eq!(conn.query_row("PRAGMA user_version",[],|row|row.get::<_,i64>(0)).unwrap(),SCHEMA_VERSION);
+  }
   #[test]
   #[ignore = "manual performance baseline"]
   fn benchmark_100k() {
