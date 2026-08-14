@@ -107,7 +107,7 @@ export function Settings() {
   const [deleteTarget, setDeleteTarget] = useState<OpenCodeAccount | null>(null);
   const addModal = useRef<HTMLDialogElement>(null);
   const deleteModal = useRef<HTMLDialogElement>(null);
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, readability, setReadability } = useTheme();
   const [language, setLanguageState] = useState<'zh' | 'en' | 'auto'>(() => {
     const stored = localStorage.getItem('opencodeboard-language');
     if (stored === 'zh' || stored === 'en') return stored;
@@ -404,6 +404,23 @@ export function Settings() {
                   onClick={() => setTheme(t)}
                 >
                   {themeLabel[t]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm text-base-content/70">{t('settings.readability')}</div>
+              <div className="text-xs text-muted mt-0.5">{t('settings.readabilityDesc')}</div>
+            </div>
+            <div className="flex gap-2">
+              {(['standard', 'comfortable', 'high-contrast'] as const).map((value) => (
+                <button
+                  key={value}
+                  className={`btn btn-sm ${readability === value ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setReadability(value)}
+                >
+                  {t(`settings.readability_${value}`)}
                 </button>
               ))}
             </div>

@@ -1,20 +1,26 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
+export type Readability = 'standard' | 'comfortable' | 'high-contrast';
 
 const STORAGE_KEY = 'opencodeboard-theme';
 const PREFER_DARK = '(prefers-color-scheme: dark)';
+const READABILITY_STORAGE_KEY = 'opencodeboard-readability';
 
 interface ThemeContextValue {
   theme: Theme;
   setTheme: (t: Theme) => void;
   resolved: 'light' | 'dark';
+  readability: Readability;
+  setReadability: (value: Readability) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
   theme: 'system',
   setTheme: () => {},
   resolved: 'light',
+  readability: 'standard',
+  setReadability: () => {},
 });
 
 function getInitialTheme(): Theme {
@@ -34,9 +40,21 @@ function applyTheme(resolved: 'light' | 'dark') {
   document.documentElement.setAttribute('data-theme', resolved === 'dark' ? 'forest' : 'cupcake');
 }
 
+function getInitialReadability(): Readability {
+  const stored = typeof window === 'undefined' ? null : localStorage.getItem(READABILITY_STORAGE_KEY);
+  return stored === 'comfortable' || stored === 'high-contrast' ? stored : 'standard';
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
   const [resolved, setResolved] = useState<'light' | 'dark'>(() => resolveTheme(getInitialTheme()));
+  const [readability, setReadabilityState] = useState<Readability>(getInitialReadability);
+
+  const setReadability = (value: Readability) => {
+    setReadabilityState(value);
+    localStorage.setItem(READABILITY_STORAGE_KEY, value);
+    document.documentElement.dataset.readability = value;
+  };
 
   const setTheme = (t: Theme) => {
     setThemeState(t);
@@ -63,8 +81,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [theme]);
 
+  useEffect(() => {
+    document.documentElement.dataset.readability = readability;
+  }, [readability]);
+
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, resolved }}>
+    <ThemeContext.Provider value={{ theme, setTheme, resolved, readability, setReadability }}>
       {children}
     </ThemeContext.Provider>
   );

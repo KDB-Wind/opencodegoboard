@@ -35,6 +35,24 @@ body {
   text-transform: uppercase;
 }
 
+html[data-readability="comfortable"] {
+  font-size: 17px;
+}
+
+html[data-readability="comfortable"] body {
+  line-height: 1.55;
+}
+
+html[data-readability="high-contrast"] {
+  --readable-muted: color-mix(in oklab, var(--color-base-content) 88%, transparent);
+  --readable-subtle: color-mix(in oklab, var(--color-base-content) 76%, transparent);
+  --readable-border: color-mix(in oklab, var(--color-base-content) 38%, transparent);
+}
+
+html[data-readability="high-contrast"] :where(.border-base-200, .border-base-300) {
+  border-color: var(--readable-border);
+}
+
 * {
   scrollbar-width: none;
   -ms-overflow-style: none;
