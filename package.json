@@ -13,6 +13,8 @@
     "test:watch": "vitest",
     "fixture:sanitize": "node scripts/sanitize-fixture.mjs",
     "a11y:check": "node scripts/check-accessibility.mjs",
+    "benchmark:db": "node scripts/benchmark-database.mjs",
+    "benchmark:startup": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/benchmark-startup.ps1",
     "tauri": "tauri",
     "tauri:build": "tauri build",
     "build:vite": "vite build",

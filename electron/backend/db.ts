@@ -178,7 +178,7 @@ interface DbMigration {
   up: (conn: Database.Database) => void;
 }
 
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
 
 const MIGRATIONS: DbMigration[] = [
   {
@@ -389,6 +389,18 @@ const MIGRATIONS: DbMigration[] = [
         );
       `);
     },
+  },
+  {
+    version: 8,
+    name: 'analytics query indexes',
+    up: (conn) => conn.exec(`
+      CREATE INDEX IF NOT EXISTS idx_usage_time_model
+        ON usage_records(created_at DESC, model, account_id);
+      CREATE INDEX IF NOT EXISTS idx_usage_account_project_time
+        ON usage_records(account_id, project_path, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_usage_account_plan_model_time
+        ON usage_records(account_id, plan, model, created_at DESC);
+    `),
   },
 ];
 
