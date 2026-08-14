@@ -109,6 +109,7 @@ async function fetchQuotaForDashboard(): Promise<Record<string, unknown>[]> {
   for (const item of results) {
     item.account_id = idByName[String(item.name ?? '')];
   }
+  db.saveQuotaSnapshots(results);
   return results;
 }
 
@@ -281,7 +282,9 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
       show_monthly: row.show_monthly,
     };
     const quota = await fetchQuotaForAccount(account, 0);
-    return c.json(quotaAccountToDict(quota));
+    const payload = { ...quotaAccountToDict(quota), account_id: row.id };
+    db.saveQuotaSnapshots([payload]);
+    return c.json(payload);
   });
 
   app.get('/api/accounts/opencode/:accountId/usage', (c) => {
@@ -372,7 +375,16 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     for (const item of results) {
       item.account_id = idByName[String(item.name ?? '')];
     }
+    db.saveQuotaSnapshots(results);
     return c.json(results);
+  });
+
+  app.get('/api/quota/snapshots', (c) => {
+    return c.json({ snapshots: db.listQuotaSnapshots({
+      account_id: c.req.query('account_id') || undefined,
+      window_label: c.req.query('window_label') || undefined,
+      limit: Number(c.req.query('limit') || 500),
+    }) });
   });
 
   app.get('/api/dashboard', async (c) => {

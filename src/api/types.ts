@@ -33,6 +33,19 @@ export interface QuotaAccount {
   windows: QuotaWindow[];
 }
 
+export interface QuotaSnapshot {
+  id: number;
+  account_id: string;
+  account_name: string;
+  window_label: string;
+  captured_at: string;
+  used: number;
+  remaining: number;
+  total: number;
+  reset_at: string;
+  reset_in_sec: number;
+}
+
 export interface Overview {
   opencode: {
     avg_effective_remaining: number;

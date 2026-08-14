@@ -30,6 +30,8 @@ import {
   createDatabaseBackup,
   restoreDatabaseBackup,
   countOpencodeAccounts,
+  saveQuotaSnapshots,
+  listQuotaSnapshots,
 } from './db';
 
 let testDir = '';
@@ -70,6 +72,9 @@ describe('database migrations', () => {
         (column) => column.name,
       ),
     ).toEqual(expect.arrayContaining(['reasoning_tokens', 'session_id']));
+    expect(
+      (getDb().pragma('table_info(quota_snapshots)') as Array<{ name: string }>).map((column) => column.name),
+    ).toEqual(expect.arrayContaining(['account_id', 'window_label', 'captured_at', 'reset_at']));
 
     expect(() => initDb()).not.toThrow();
     expect(getSchemaVersion()).toBe(CURRENT_SCHEMA_VERSION);
@@ -185,5 +190,19 @@ describe('database migrations', () => {
     foreign.pragma('user_version = 1');
     foreign.close();
     expect(() => validateDatabaseFile(invalidPath)).toThrow('missing required table');
+  });
+
+  it('stores official quota window snapshots idempotently', () => {
+    initDb();
+    const account = createOpencodeAccount({ name: 'A', workspace_id: 'wrk', auth_cookie: 'secret' });
+    const payload = [{
+      account_id: account.id, name: 'A', success: true, updated_at: '2026-08-15T00:00:00Z',
+      windows: [{ label: 'Weekly', used: 25, remaining: 75, total: 100, reset_at: '2026-08-20T00:00:00Z', reset_in_sec: 432000 }],
+    }];
+    expect(saveQuotaSnapshots(payload)).toBe(1);
+    expect(saveQuotaSnapshots(payload)).toBe(0);
+    expect(listQuotaSnapshots({ account_id: account.id })).toEqual([
+      expect.objectContaining({ account_id: account.id, window_label: 'Weekly', used: 25, remaining: 75 }),
+    ]);
   });
 });

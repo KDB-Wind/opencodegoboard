@@ -171,7 +171,7 @@ interface DbMigration {
   up: (conn: Database.Database) => void;
 }
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 const MIGRATIONS: DbMigration[] = [
   {
@@ -318,6 +318,26 @@ const MIGRATIONS: DbMigration[] = [
       conn.exec(`CREATE INDEX IF NOT EXISTS idx_usage_session_time
         ON usage_records(account_id, session_id, created_at DESC)`);
     },
+  },
+  {
+    version: 5,
+    name: 'official quota window snapshots',
+    up: (conn) => conn.exec(`
+      CREATE TABLE IF NOT EXISTS quota_snapshots (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id TEXT NOT NULL REFERENCES opencode_accounts(id) ON DELETE CASCADE,
+        window_label TEXT NOT NULL,
+        captured_at TEXT NOT NULL,
+        used REAL NOT NULL,
+        remaining REAL NOT NULL,
+        total REAL NOT NULL,
+        reset_at TEXT NOT NULL,
+        reset_in_sec INTEGER NOT NULL,
+        UNIQUE(account_id, window_label, captured_at)
+      );
+      CREATE INDEX IF NOT EXISTS idx_quota_snapshot_window_time
+        ON quota_snapshots(account_id, window_label, captured_at DESC);
+    `),
   },
 ];
 
@@ -1027,6 +1047,51 @@ export function countOpencodeAccounts(): number {
   return Number(
     (getDb().prepare('SELECT COUNT(*) AS c FROM opencode_accounts').get() as { c: number }).c,
   );
+}
+
+export function saveQuotaSnapshots(accounts: Array<Record<string, unknown>>): number {
+  const conn = getDb();
+  const insert = conn.prepare(`
+    INSERT OR IGNORE INTO quota_snapshots (
+      account_id, window_label, captured_at, used, remaining, total, reset_at, reset_in_sec
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  let inserted = 0;
+  const tx = conn.transaction(() => {
+    for (const account of accounts) {
+      if (!account.success || !account.account_id) continue;
+      const capturedAt = String(account.updated_at || nowIso());
+      for (const raw of (account.windows as Array<Record<string, unknown>> | undefined) ?? []) {
+        inserted += insert.run(
+          String(account.account_id), String(raw.label), capturedAt,
+          Number(raw.used || 0), Number(raw.remaining || 0), Number(raw.total || 100),
+          String(raw.reset_at || ''), Math.max(0, Number(raw.reset_in_sec || 0)),
+        ).changes;
+      }
+    }
+  });
+  tx();
+  return inserted;
+}
+
+export function listQuotaSnapshots(opts: {
+  account_id?: string;
+  window_label?: string;
+  limit?: number;
+} = {}): Array<Record<string, unknown>> {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (opts.account_id) { where.push('qs.account_id = ?'); params.push(opts.account_id); }
+  if (opts.window_label) { where.push('qs.window_label = ?'); params.push(opts.window_label); }
+  const limit = Math.max(1, Math.min(opts.limit ?? 500, 5000));
+  return getDb().prepare(`
+    SELECT qs.*, oa.name AS account_name
+    FROM quota_snapshots qs
+    JOIN opencode_accounts oa ON oa.id = qs.account_id
+    ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+    ORDER BY qs.captured_at DESC
+    LIMIT ?
+  `).all(...params, limit) as Array<Record<string, unknown>>;
 }
 
 export function listUsageRecordsForExport(): UsageRecordWithAccount[] {

@@ -5,6 +5,7 @@ import type {
   OpenCodeAccount,
   Overview,
   QuotaAccount,
+  QuotaSnapshot,
   ServiceConfig,
   UsageRecord,
   UsageResponse,
@@ -132,6 +133,12 @@ export const api = {
 
   // Quota
   getQuota: () => get<QuotaAccount[]>('/quota'),
+  getQuotaSnapshots: (accountId?: string, windowLabel?: string, limit = 500) => {
+    const query = new URLSearchParams({ limit: String(limit) });
+    if (accountId) query.set('account_id', accountId);
+    if (windowLabel) query.set('window_label', windowLabel);
+    return get<{ snapshots: QuotaSnapshot[] }>(`/quota/snapshots?${query}`);
+  },
   getAccountQuota: (id: string) => get<QuotaAccount>(`/accounts/opencode/${id}/quota`),
 
   // Usage Records
