@@ -55,6 +55,20 @@ export interface UsageRecordWithAccount extends UsageRecordRow {
   account_name: string;
 }
 
+export interface UsageSessionRow {
+  account_id: string;
+  account_name: string;
+  session_id: string | null;
+  request_count: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_reasoning_tokens: number;
+  total_cache_read_tokens: number;
+  total_cost_usd: number;
+  first_at: string;
+  last_at: string;
+}
+
 export interface UsageSyncStateRow {
   account_id: string;
   last_sync_at: string | null;
@@ -722,6 +736,83 @@ export function listAllUsageRecords(opts: {
     };
   });
   return [records, total];
+}
+
+export function listUsageSessions(opts: {
+  offset?: number;
+  limit?: number;
+  account_id?: string | null;
+} = {}): [UsageSessionRow[], number] {
+  const offset = Math.max(0, opts.offset ?? 0);
+  const limit = Math.max(1, Math.min(opts.limit ?? 50, 200));
+  const where = opts.account_id ? 'WHERE ur.account_id = ?' : '';
+  const params: unknown[] = opts.account_id ? [opts.account_id] : [];
+  const grouping = `
+    FROM usage_records ur
+    JOIN opencode_accounts oa ON oa.id = ur.account_id
+    ${where}
+    GROUP BY ur.account_id, oa.name, ur.session_id`;
+  const conn = getDb();
+  const total = Number(
+    (conn.prepare(`SELECT COUNT(*) AS c FROM (SELECT 1 ${grouping})`).get(...params) as { c: number }).c,
+  );
+  const rows = conn.prepare(`
+    SELECT ur.account_id, oa.name AS account_name, ur.session_id,
+      COUNT(*) AS request_count,
+      SUM(ur.input_tokens) AS total_input_tokens,
+      SUM(ur.output_tokens) AS total_output_tokens,
+      SUM(ur.reasoning_tokens) AS total_reasoning_tokens,
+      SUM(ur.cache_read_tokens) AS total_cache_read_tokens,
+      SUM(ur.cost_usd) AS total_cost_usd,
+      MIN(ur.created_at) AS first_at,
+      MAX(ur.created_at) AS last_at
+    ${grouping}
+    ORDER BY last_at DESC
+    LIMIT ? OFFSET ?
+  `).all(...params, limit, offset) as Array<Record<string, unknown>>;
+  return [rows.map((row) => ({
+    account_id: String(row.account_id),
+    account_name: String(row.account_name),
+    session_id: row.session_id != null && String(row.session_id) !== '' ? String(row.session_id) : null,
+    request_count: Number(row.request_count),
+    total_input_tokens: Number(row.total_input_tokens),
+    total_output_tokens: Number(row.total_output_tokens),
+    total_reasoning_tokens: Number(row.total_reasoning_tokens),
+    total_cache_read_tokens: Number(row.total_cache_read_tokens),
+    total_cost_usd: Number(row.total_cost_usd),
+    first_at: String(row.first_at),
+    last_at: String(row.last_at),
+  })), total];
+}
+
+export function listSessionUsageRecords(opts: {
+  account_id: string;
+  session_id: string | null;
+  offset?: number;
+  limit?: number;
+}): [UsageRecordWithAccount[], number] {
+  const offset = Math.max(0, opts.offset ?? 0);
+  const limit = Math.max(1, Math.min(opts.limit ?? 100, 200));
+  const sessionWhere = opts.session_id == null
+    ? "(ur.session_id IS NULL OR ur.session_id = '')"
+    : 'ur.session_id = ?';
+  const params: unknown[] = opts.session_id == null
+    ? [opts.account_id]
+    : [opts.account_id, opts.session_id];
+  const where = `WHERE ur.account_id = ? AND ${sessionWhere}`;
+  const conn = getDb();
+  const total = Number((conn.prepare(`
+    SELECT COUNT(*) AS c FROM usage_records ur ${where}
+  `).get(...params) as { c: number }).c);
+  const rows = conn.prepare(`
+    SELECT ur.*, oa.name AS account_name
+    FROM usage_records ur
+    JOIN opencode_accounts oa ON oa.id = ur.account_id
+    ${where}
+    ORDER BY ur.created_at DESC
+    LIMIT ? OFFSET ?
+  `).all(...params, limit, offset) as Array<Record<string, unknown>>;
+  return [rows.map((row) => ({ ...mapUsage(row), account_name: String(row.account_name) })), total];
 }
 
 export function opencodeDailyStats(days = 30, accountId?: string | null): Record<string, unknown>[] {

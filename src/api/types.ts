@@ -157,6 +157,20 @@ export interface UsageResponse {
   };
 }
 
+export interface UsageSession {
+  account_id: string;
+  account_name: string;
+  session_id: string | null;
+  request_count: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_reasoning_tokens: number;
+  total_cache_read_tokens: number;
+  total_cost_usd: number;
+  first_at: string;
+  last_at: string;
+}
+
 export interface UsageDataHealth {
   account_id: string;
   account_name: string;

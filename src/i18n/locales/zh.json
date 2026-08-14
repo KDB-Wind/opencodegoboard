@@ -40,6 +40,7 @@
     "plan": "Plan",
     "minute": "分钟",
     "seconds": "秒"
+    ,"close": "关闭"
   },
   "timeRange": {
     "today": "今天",
@@ -128,7 +129,13 @@
   },
   "usageRecords": {
     "title": "使用记录",
-    "subtitle": "详细的使用记录日志，共 {{total}} 条"
+    "subtitle": "当前视图共 {{total}} 项",
+    "sessions": "会话",
+    "records": "原始记录",
+    "session": "会话 ID",
+    "unassigned": "未归属记录",
+    "lastActive": "最后活动",
+    "noSessions": "暂无会话"
   },
   "settings": {
     "title": "设置",

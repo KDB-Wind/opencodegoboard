@@ -9,6 +9,7 @@ import type {
   UsageRecord,
   UsageResponse,
   UsageDataHealth,
+  UsageSession,
 } from './types';
 
 const backendPort = typeof window !== 'undefined' && window.electronAPI?.getBackendPort
@@ -106,6 +107,18 @@ export const api = {
   getAllUsage: (offset = 0, limit = 50, accountId?: string) => {
     let path = `/usage/all?offset=${offset}&limit=${limit}`;
     if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
+    return get<UsageResponse>(path);
+  },
+  getUsageSessions: (offset = 0, limit = 50, accountId?: string) => {
+    let path = `/usage/sessions?offset=${offset}&limit=${limit}`;
+    if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
+    return get<{ sessions: UsageSession[]; total: number; offset: number; limit: number }>(path);
+  },
+  getSessionUsage: (accountId: string, sessionId: string | null) => {
+    let path = `/usage/session-records?account_id=${encodeURIComponent(accountId)}&limit=200`;
+    path += sessionId == null
+      ? '&unassigned=true'
+      : `&session_id=${encodeURIComponent(sessionId)}`;
     return get<UsageResponse>(path);
   },
   syncUsage: (id: string) =>

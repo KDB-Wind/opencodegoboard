@@ -40,6 +40,7 @@
     "plan": "Plan",
     "minute": "min",
     "seconds": "s"
+    ,"close": "Close"
   },
   "timeRange": {
     "today": "Today",
@@ -128,7 +129,13 @@
   },
   "usageRecords": {
     "title": "Usage Records",
-    "subtitle": "Detailed usage log, {{total}} entries total"
+    "subtitle": "{{total}} items in the current view",
+    "sessions": "Sessions",
+    "records": "Raw records",
+    "session": "Session ID",
+    "unassigned": "Unassigned records",
+    "lastActive": "Last active",
+    "noSessions": "No sessions"
   },
   "settings": {
     "title": "Settings",

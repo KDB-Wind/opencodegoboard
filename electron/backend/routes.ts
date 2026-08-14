@@ -544,6 +544,28 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     });
   });
 
+  app.get('/api/usage/sessions', (c) => {
+    const offset = Math.max(0, Number(c.req.query('offset') || 0));
+    const limit = Math.max(1, Math.min(Number(c.req.query('limit') || 50), 200));
+    const accountId = c.req.query('account_id') || undefined;
+    const [sessions, total] = db.listUsageSessions({ offset, limit, account_id: accountId });
+    return c.json({ sessions, total, offset, limit });
+  });
+
+  app.get('/api/usage/session-records', (c) => {
+    const accountId = c.req.query('account_id');
+    if (!accountId) return c.json({ detail: 'account_id is required' }, 400);
+    const sessionId = c.req.query('unassigned') === 'true'
+      ? null
+      : c.req.query('session_id') || null;
+    const offset = Math.max(0, Number(c.req.query('offset') || 0));
+    const limit = Math.max(1, Math.min(Number(c.req.query('limit') || 100), 200));
+    const [records, total] = db.listSessionUsageRecords({
+      account_id: accountId, session_id: sessionId, offset, limit,
+    });
+    return c.json({ records: records.map(db.usageRecordWithAccountToDict), total, offset, limit });
+  });
+
   app.post('/api/config/reset', async (c) => {
     try {
       ensureBootstrapped();

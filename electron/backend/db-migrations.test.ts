@@ -23,6 +23,8 @@ import {
   createOpencodeAccount,
   insertUsageRecordsIgnore,
   listUsageRecords,
+  listUsageSessions,
+  listSessionUsageRecords,
 } from './db';
 
 let testDir = '';
@@ -136,5 +138,24 @@ describe('database migrations', () => {
       reasoning_tokens: 7,
       session_id: 'ses_test',
     });
+
+    insertUsageRecordsIgnore(account.id, 'wrk_a', [
+      {
+        usg_id: 'usg_unassigned', created_at: '2026-08-15T01:00:00Z', model: 'model',
+        provider: null, input_tokens: 3, output_tokens: 1, reasoning_tokens: 0,
+        cache_read_tokens: 0, cache_write_5m_tokens: 0, cache_write_1h_tokens: 0,
+        cost_raw: 0, cost_usd: 0, key_id: null, session_id: null, plan: null,
+      },
+    ]);
+    const [sessions, sessionTotal] = listUsageSessions();
+    expect(sessionTotal).toBe(2);
+    expect(sessions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ session_id: 'ses_test', request_count: 1, total_reasoning_tokens: 7 }),
+      expect.objectContaining({ session_id: null, request_count: 1 }),
+    ]));
+    const [sessionRecords] = listSessionUsageRecords({ account_id: account.id, session_id: 'ses_test' });
+    expect(sessionRecords.map((record) => record.usg_id)).toEqual(['usg_reasoning']);
+    const [unassigned] = listSessionUsageRecords({ account_id: account.id, session_id: null });
+    expect(unassigned.map((record) => record.usg_id)).toEqual(['usg_unassigned']);
   });
 });
