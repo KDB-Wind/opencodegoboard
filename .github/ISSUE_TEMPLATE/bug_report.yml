@@ -1,0 +1,64 @@
+name: 问题反馈 Bug Report
+description: 报告 OpenCodeBoard 使用中遇到的问题 (Report a bug)
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### 环境信息 Environment
+        请在提交前确认已使用最新版本，并补充环境信息。
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 系统平台 Platform
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 版本 Version
+      description: 设置页或关于页可查看版本号 (e.g. v1.1.2)
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述 Description
+      description: 简洁清晰地描述遇到的问题
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 Steps to reproduce
+      placeholder: |
+        1. 打开设置页
+        2. 点击...
+        3. 出现...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为 Expected behavior
+    validations:
+      required: false
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为 Actual behavior
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志 / 截图 Logs or screenshots
+      description: 如有错误信息、控制台日志或截图请粘贴在此；注意打码 Cookie 等敏感信息
+    validations:
+      required: false

@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="130" y1="120" x2="900" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8F8FC"/>
+      <stop offset="1" stop-color="#ECECF5"/>
+    </linearGradient>
+    <radialGradient id="shell" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(560 560) rotate(125) scale(470 430)">
+      <stop stop-color="#93B4FF"/>
+      <stop offset="0.6" stop-color="#5A78FF"/>
+      <stop offset="1" stop-color="#4456E8"/>
+    </radialGradient>
+    <linearGradient id="limb" x1="270" y1="520" x2="810" y2="820" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6C5BFF"/>
+      <stop offset="1" stop-color="#3A45E5"/>
+    </linearGradient>
+    <linearGradient id="clawL" x1="230" y1="420" x2="360" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B6A2FF"/>
+      <stop offset="1" stop-color="#5D56F6"/>
+    </linearGradient>
+    <linearGradient id="clawR" x1="760" y1="420" x2="900" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#9AB7FF"/>
+      <stop offset="1" stop-color="#4961FF"/>
+    </linearGradient>
+    <linearGradient id="arcBlue" x1="330" y1="270" x2="740" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5063FF"/>
+      <stop offset="1" stop-color="#7D90FF"/>
+    </linearGradient>
+    <linearGradient id="barBlue" x1="560" y1="365" x2="690" y2="470" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8AA6FF"/>
+      <stop offset="1" stop-color="#586FFF"/>
+    </linearGradient>
+    <radialGradient id="blush" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(410 673) rotate(90) scale(36)">
+      <stop stop-color="#FFAAC8" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#FFAAC8" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="blush2" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(613 673) rotate(90) scale(36)">
+      <stop stop-color="#FFAAC8" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#FFAAC8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="120" y="120" width="784" height="784" rx="126" fill="url(#bg)"/>
+  <ellipse cx="512" cy="794" rx="170" ry="38" fill="#6672E8" opacity="0.10"/>
+
+  <!-- analytics -->
+  <path d="M394 454A228 228 0 0 1 706 281" stroke="url(#arcBlue)" stroke-width="34" stroke-linecap="round"/>
+  <path d="M710 282A228 228 0 0 1 768 423" stroke="#D9DCF4" stroke-width="34" stroke-linecap="round"/>
+  <circle cx="430" cy="410" r="34" fill="#F7C340"/>
+  <rect x="485" y="397" width="48" height="64" rx="18" fill="#D9DCF4"/>
+  <rect x="552" y="356" width="52" height="105" rx="18" fill="url(#barBlue)"/>
+  <rect x="620" y="307" width="56" height="154" rx="18" fill="url(#barBlue)"/>
+
+  <!-- arms -->
+  <path d="M382 606C328 601 288 564 278 504" stroke="url(#limb)" stroke-width="36" stroke-linecap="round"/>
+  <path d="M640 606C694 601 734 564 744 504" stroke="url(#limb)" stroke-width="36" stroke-linecap="round"/>
+
+  <!-- claws -->
+  <path d="M273 431C223 454 207 509 228 569C241 604 271 627 306 636C304 588 313 551 343 520C365 496 370 460 352 436C335 413 300 419 273 431Z" fill="url(#clawL)"/>
+  <path d="M331 464C298 479 286 521 299 559C307 583 325 602 348 615C349 580 358 551 382 528C398 513 403 487 391 469C380 451 353 454 331 464Z" fill="url(#clawL)"/>
+  <path d="M751 431C801 454 817 509 796 569C783 604 753 627 718 636C720 588 711 551 681 520C659 496 654 460 672 436C689 413 724 419 751 431Z" fill="url(#clawR)"/>
+  <path d="M693 464C726 479 738 521 725 559C717 583 699 602 676 615C675 580 666 551 642 528C626 513 621 487 633 469C644 451 671 454 693 464Z" fill="url(#clawR)"/>
+
+  <!-- body shadow behind -->
+  <ellipse cx="512" cy="638" rx="175" ry="158" fill="#5863EE" opacity="0.08"/>
+
+  <!-- body -->
+  <ellipse cx="512" cy="632" rx="174" ry="156" fill="url(#shell)"/>
+
+  <!-- legs -->
+  <path d="M410 695C376 712 344 734 332 774" stroke="url(#limb)" stroke-width="28" stroke-linecap="round"/>
+  <path d="M466 711C436 728 416 751 410 790" stroke="url(#limb)" stroke-width="28" stroke-linecap="round"/>
+  <path d="M614 711C644 728 664 751 670 790" stroke="url(#limb)" stroke-width="28" stroke-linecap="round"/>
+  <path d="M670 695C704 712 736 734 748 774" stroke="url(#limb)" stroke-width="28" stroke-linecap="round"/>
+
+  <!-- eyes -->
+  <ellipse cx="425" cy="618" rx="33" ry="46" fill="#1F2A79"/>
+  <ellipse cx="597" cy="618" rx="33" ry="46" fill="#1F2A79"/>
+  <circle cx="415" cy="602" r="12" fill="white"/>
+  <circle cx="587" cy="602" r="12" fill="white"/>
+
+  <!-- smile -->
+  <path d="M482 664C500 685 526 685 542 664" stroke="#1F2A79" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M482 646C490 639 500 642 505 651" stroke="#1F2A79" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- blush -->
+  <circle cx="410" cy="673" r="36" fill="url(#blush)"/>
+  <circle cx="613" cy="673" r="36" fill="url(#blush2)"/>
+</svg>

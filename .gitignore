@@ -1,0 +1,66 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+dist
+dist-electron
+release
+out
+
+# Local env files
+*.local
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Python (legacy backend - removed in v1.1)
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.spec
+uv.lock
+
+# Backend data (persisted in userData at runtime)
+data/
+68backend.db
+config.json
+service.json
+
+# opencode skill files
+.agents/
+skills-lock.json
+
+# Build outputs (temporary fallback dir)
+release2
+release-121/
+release-122/
+release-123/
+release-124/
+release-125/
+release-126/
+release-127/
+
+# Rust / Tauri prototype
+src-tauri/target/
