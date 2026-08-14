@@ -246,6 +246,7 @@
     "dataManagementDesc": "Export usage or back up and restore the complete local database. Integrity and version are validated before restore.",
     "exportCsv": "Export CSV",
     "backupDatabase": "Back up database",
+    "downloadDiagnostics": "Download redacted diagnostics",
     "restoreDatabase": "Restore database",
     "restoreDone": "Database restored",
     "restoreFailed": "Database restore failed: {{msg}}",

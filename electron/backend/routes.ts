@@ -17,6 +17,7 @@ import { fetchAllQuotas, fetchQuotaForAccount, quotaAccountToDict } from './quot
 import * as syncProgress from './sync-progress';
 import { backfillUsage, syncResultToDict, syncUsage } from './usage-sync';
 import { analyzeQuotaWindows, buildUsageRecommendations, reconcileQuotaWindows } from './quota-intelligence';
+import { buildDiagnosticReport } from './diagnostics';
 
 const OpenCodeAccountCreate = z.object({
   name: z.string(),
@@ -583,6 +584,17 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
       headers: {
         'Content-Type': 'application/vnd.sqlite3',
         'Content-Disposition': 'attachment; filename="opencodegoboard-backup.db"',
+      },
+    });
+  });
+
+  app.get('/api/data/diagnostics', (c) => {
+    const report = JSON.stringify(buildDiagnosticReport(), null, 2);
+    return new Response(report, {
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="opencodegoboard-diagnostics.json"',
+        'Cache-Control': 'no-store',
       },
     });
   });

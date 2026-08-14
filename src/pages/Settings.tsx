@@ -624,6 +624,7 @@ export function Settings() {
         <div className="flex flex-wrap gap-2">
           <button className="btn btn-outline btn-sm" onClick={() => api.exportUsageCsv()}>{t('settings.exportCsv')}</button>
           <button className="btn btn-outline btn-sm" onClick={() => api.backupDatabase()}>{t('settings.backupDatabase')}</button>
+          <button className="btn btn-outline btn-sm" onClick={() => api.downloadDiagnostics()}>{t('settings.downloadDiagnostics')}</button>
           <button className="btn btn-warning btn-outline btn-sm" onClick={() => restoreInput.current?.click()}>{t('settings.restoreDatabase')}</button>
           <input ref={restoreInput} type="file" accept=".db,.sqlite,.sqlite3" className="hidden" onChange={(event) => restoreBackup(event.target.files?.[0])} />
         </div>

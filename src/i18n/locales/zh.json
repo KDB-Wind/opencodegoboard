@@ -246,6 +246,7 @@
     "dataManagementDesc": "导出使用记录，或备份和恢复完整本地数据库。恢复前会自动校验完整性与版本。",
     "exportCsv": "导出 CSV",
     "backupDatabase": "备份数据库",
+    "downloadDiagnostics": "下载脱敏诊断包",
     "restoreDatabase": "恢复数据库",
     "restoreDone": "数据库恢复成功",
     "restoreFailed": "数据库恢复失败：{{msg}}",

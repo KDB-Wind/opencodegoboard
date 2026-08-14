@@ -252,6 +252,7 @@ export const api = {
   // Data portability
   exportUsageCsv: () => download('/data/export.csv', 'opencodegoboard-usage.csv'),
   backupDatabase: () => download('/data/backup', 'opencodegoboard-backup.db'),
+  downloadDiagnostics: () => download('/data/diagnostics', 'opencodegoboard-diagnostics.json'),
   restoreDatabase: async (file: File) => {
     const res = await fetch(`${BASE}/data/restore`, {
       method: 'POST', headers: authHeaders({ 'Content-Type': 'application/octet-stream' }), body: file,
