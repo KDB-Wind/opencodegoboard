@@ -108,6 +108,8 @@
     "trendTitle": "用量趋势",
     "trendCost": "费用",
     "trendRequests": "请求",
+    "trendTokens": "Tokens",
+    "trendCompare": "归一化对比",
     "trendTooltipCost": "费用",
     "trendTooltipRequests": "请求数"
   },

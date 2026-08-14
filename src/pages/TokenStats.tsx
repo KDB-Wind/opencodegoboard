@@ -28,7 +28,7 @@ export function TokenStats() {
   const [range, setRange] = useState<TimeRange>(getStoredTimeRange);
   const [accountId, setAccountId] = useState('');
   const [model, setModel] = useState('');
-  const [mode, setMode] = useState<'cost' | 'requests'>('cost');
+  const [mode, setMode] = useState<'cost' | 'requests' | 'tokens' | 'compare'>('cost');
 
   useEffect(() => {
     storeTimeRange(range);
@@ -226,6 +226,22 @@ export function TokenStats() {
                 onClick={() => setMode('cost')}
               >
                 {t('tokenStats.trendCost')}
+              </button>
+              <button
+                type="button"
+                aria-pressed={mode === 'tokens'}
+                className={`rounded-md font-medium transition-colors whitespace-nowrap px-2 py-0.5 text-[11px] ${mode === 'tokens' ? 'bg-primary text-primary-content shadow-sm' : 'text-base-content/60 hover:bg-base-100/70'}`}
+                onClick={() => setMode('tokens')}
+              >
+                {t('tokenStats.trendTokens')}
+              </button>
+              <button
+                type="button"
+                aria-pressed={mode === 'compare'}
+                className={`rounded-md font-medium transition-colors whitespace-nowrap px-2 py-0.5 text-[11px] ${mode === 'compare' ? 'bg-primary text-primary-content shadow-sm' : 'text-base-content/60 hover:bg-base-100/70'}`}
+                onClick={() => setMode('compare')}
+              >
+                {t('tokenStats.trendCompare')}
               </button>
               <button
                 type="button"
