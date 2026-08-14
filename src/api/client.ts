@@ -27,13 +27,36 @@ function authHeaders(extra?: Record<string, string>): Record<string, string> {
   };
 }
 
-async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { headers: authHeaders() });
+const GET_CACHE_TTL_MS = 3000;
+const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
+const inFlightGets = new Map<string, Promise<unknown>>();
+
+async function fetchGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { headers: authHeaders(), signal });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
     throw new Error(`${res.status} ${res.statusText}${text ? ': ' + text : ''}`);
   }
   return res.json();
+}
+
+async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const cached = responseCache.get(path);
+  if (cached && cached.expiresAt > Date.now()) return cached.value as T;
+  if (cached) responseCache.delete(path);
+
+  // Signal-bound calls must remain independently cancellable. Regular calls share one request.
+  if (signal) return fetchGet<T>(path, signal);
+  const existing = inFlightGets.get(path);
+  if (existing) return existing as Promise<T>;
+  const request = fetchGet<T>(path)
+    .then((value) => {
+      responseCache.set(path, { expiresAt: Date.now() + GET_CACHE_TTL_MS, value });
+      return value;
+    })
+    .finally(() => inFlightGets.delete(path));
+  inFlightGets.set(path, request);
+  return request;
 }
 
 async function post<T>(path: string, body?: unknown): Promise<T> {
@@ -54,6 +77,7 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     const text = await res.text().catch(() => '');
     throw new Error(`${res.status} ${res.statusText}${text ? ': ' + text : ''}`);
   }
+  responseCache.clear();
   return res.json();
 }
 
@@ -63,24 +87,25 @@ async function del<T>(path: string): Promise<T> {
     const text = await res.text().catch(() => '');
     throw new Error(`${res.status} ${res.statusText}${text ? ': ' + text : ''}`);
   }
+  responseCache.clear();
   return res.json();
 }
 
 export const api = {
   // Consolidated dashboard (overview + quota + recent usage in one call)
-  getDashboard: (period = '30d') => get<{
+  getDashboard: (period = '30d', signal?: AbortSignal) => get<{
     overview: Overview;
     quota: QuotaAccount[];
     recent_usage: { records: UsageRecord[]; total: number };
     model_tokens: ModelTokenStat[];
     data_health: UsageDataHealth[];
     period: string;
-  }>(`/dashboard?period=${period}`),
+  }>(`/dashboard?period=${period}`, signal),
   // Config
   getConfig: () => get<ServiceConfig>('/config'),
 
   // Accounts
-  listOpenCodeAccounts: () => get<OpenCodeAccount[]>('/accounts/opencode'),
+  listOpenCodeAccounts: (signal?: AbortSignal) => get<OpenCodeAccount[]>('/accounts/opencode', signal),
   createOpenCodeAccount: (data: {
     name: string;
     workspace_id?: string;
@@ -104,15 +129,15 @@ export const api = {
     if (keyId) path += `&key_id=${encodeURIComponent(keyId)}`;
     return get<UsageResponse>(path);
   },
-  getAllUsage: (offset = 0, limit = 50, accountId?: string) => {
+  getAllUsage: (offset = 0, limit = 50, accountId?: string, signal?: AbortSignal) => {
     let path = `/usage/all?offset=${offset}&limit=${limit}`;
     if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
-    return get<UsageResponse>(path);
+    return get<UsageResponse>(path, signal);
   },
-  getUsageSessions: (offset = 0, limit = 50, accountId?: string) => {
+  getUsageSessions: (offset = 0, limit = 50, accountId?: string, signal?: AbortSignal) => {
     let path = `/usage/sessions?offset=${offset}&limit=${limit}`;
     if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
-    return get<{ sessions: UsageSession[]; total: number; offset: number; limit: number }>(path);
+    return get<{ sessions: UsageSession[]; total: number; offset: number; limit: number }>(path, signal);
   },
   getSessionUsage: (accountId: string, sessionId: string | null) => {
     let path = `/usage/session-records?account_id=${encodeURIComponent(accountId)}&limit=200`;
@@ -136,26 +161,26 @@ export const api = {
 
   // Analytics
   getOverview: () => get<Overview>('/analytics/overview'),
-  getDailyStats: (days = 30, accountId?: string) => {
+  getDailyStats: (days = 30, accountId?: string, signal?: AbortSignal) => {
     let path = `/analytics/opencode/daily?days=${days}`;
     if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
-    return get<{ days: number; stats: DailyStat[] }>(path);
+    return get<{ days: number; stats: DailyStat[] }>(path, signal);
   },
-  getHourlyStats: (accountId?: string) => {
+  getHourlyStats: (accountId?: string, signal?: AbortSignal) => {
     let path = '/analytics/opencode/hourly';
     if (accountId) path += `?account_id=${encodeURIComponent(accountId)}`;
-    return get<{ hours: 24; stats: DailyStat[] }>(path);
+    return get<{ hours: 24; stats: DailyStat[] }>(path, signal);
   },
-  getDailyModelStats: (days = 30, accountId?: string) => {
+  getDailyModelStats: (days = 30, accountId?: string, signal?: AbortSignal) => {
     let path = `/analytics/opencode/daily/models?days=${days}`;
     if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
-    return get<{ days: number; stats: DailyModelStat[] }>(path);
+    return get<{ days: number; stats: DailyModelStat[] }>(path, signal);
   },
-  getModelTokenStats: (days = 30, accountId?: string, period?: string) => {
+  getModelTokenStats: (days = 30, accountId?: string, period?: string, signal?: AbortSignal) => {
     let path = `/analytics/opencode/model-tokens?days=${days}`;
     if (period) path += `&period=${encodeURIComponent(period)}`;
     if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
-    return get<{ days: number; stats: ModelTokenStat[] }>(path);
+    return get<{ days: number; stats: ModelTokenStat[] }>(path, signal);
   },
 
   // Config

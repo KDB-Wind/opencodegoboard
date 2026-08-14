@@ -161,15 +161,15 @@ export function Dashboard() {
   useEffect(() => {
     storeTimeRange(topPeriod);
   }, [topPeriod]);
-  const { data, loading, refetch: refetchDashboard } = usePolling(() => api.getDashboard('30d'), 30000);
+  const { data, loading, refetch: refetchDashboard } = usePolling((signal) => api.getDashboard('30d', signal), 30000);
 
   const { data: todayData, refetch: refetchToday } = usePolling(
-    () => api.getModelTokenStats(1, undefined, 'today'),
+    (signal) => api.getModelTokenStats(1, undefined, 'today', signal),
     60000,
   );
 
   const { data: topData, refetch: refetchTop } = usePolling(
-    () => api.getModelTokenStats(1, undefined, topPeriod),
+    (signal) => api.getModelTokenStats(1, undefined, topPeriod, signal),
     60000,
     true,
     [topPeriod],

@@ -34,24 +34,24 @@ export function TokenStats() {
     storeTimeRange(range);
   }, [range]);
 
-  const { data: accounts } = usePolling(() => api.listOpenCodeAccounts(), 120000);
+  const { data: accounts } = usePolling((signal) => api.listOpenCodeAccounts(signal), 120000);
 
   const aid = accountId || undefined;
   const { data: modelTokens } = usePolling(
-    () => api.getModelTokenStats(1, aid, PERIOD_MAP[range]),
+    (signal) => api.getModelTokenStats(1, aid, PERIOD_MAP[range], signal),
     60000,
     true,
     [range, aid],
   );
 
   const { data: trendData } = usePolling(
-    () => api.getDailyStats(TREND_DAYS[range], aid),
+    (signal) => api.getDailyStats(TREND_DAYS[range], aid, signal),
     60000,
     range !== 'today',
     [range, aid],
   );
   const { data: hourlyData } = usePolling(
-    () => api.getHourlyStats(aid),
+    (signal) => api.getHourlyStats(aid, signal),
     60000,
     range === 'today',
     [aid],

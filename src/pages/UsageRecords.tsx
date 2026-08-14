@@ -17,17 +17,17 @@ export function UsageRecords() {
   const limit = 50;
 
   const { data: accounts } = usePolling(
-    () => api.listOpenCodeAccounts(),
+    (signal) => api.listOpenCodeAccounts(signal),
     120000,
   );
 
   const { data: recordData, loading: recordsLoading, refetch: refetchRecords } = usePolling(
-    () => api.getAllUsage(page * limit, limit, accountId || undefined),
+    (signal) => api.getAllUsage(page * limit, limit, accountId || undefined, signal),
     30000,
     view === 'records',
   );
   const { data: sessionData, loading: sessionsLoading, refetch: refetchSessions } = usePolling(
-    () => api.getUsageSessions(page * limit, limit, accountId || undefined),
+    (signal) => api.getUsageSessions(page * limit, limit, accountId || undefined, signal),
     30000,
     view === 'sessions',
   );
