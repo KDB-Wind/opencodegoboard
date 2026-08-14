@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from './ThemeProvider';
+import { desktop } from '../lib/desktop';
 
 const ONBOARDING_KEY = 'opencodeboard-onboarded';
 
@@ -22,9 +23,7 @@ export function OnboardingDialog() {
 
   const handleFinish = async () => {
     localStorage.setItem(ONBOARDING_KEY, '1');
-    if (tray && window.electronAPI?.setTrayMode) {
-      await window.electronAPI.setTrayMode(true);
-    }
+    if (tray) await desktop.setTrayMode(true);
     ref.current?.close();
     setShow(false);
   };

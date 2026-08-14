@@ -144,6 +144,7 @@
   "dependencies": {
     "@hono/node-server": "^2.0.10",
     "@lobehub/icons": "^5.15.0",
+    "@tauri-apps/api": "^2.11.1",
     "better-sqlite3": "^12.11.1",
     "hono": "^4.12.30",
     "zod": "^4.4.3"

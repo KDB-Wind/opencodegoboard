@@ -1,12 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
+import { desktop } from '../lib/desktop';
 
 function openLink(url: string) {
-  if (window.electronAPI?.openExternal) {
-    window.electronAPI.openExternal(url);
-  } else {
-    window.open(url, '_blank', 'noopener');
-  }
+  void desktop.openExternal(url);
 }
 
 export function About() {
@@ -14,9 +11,7 @@ export function About() {
   const [version, setVersion] = useState('1.2.0');
 
   useEffect(() => {
-    if (window.electronAPI?.getVersion) {
-      window.electronAPI.getVersion().then(setVersion).catch(() => {});
-    }
+    desktop.getVersion().then(setVersion).catch(() => {});
   }, []);
 
   return (

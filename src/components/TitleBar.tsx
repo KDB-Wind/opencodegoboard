@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { desktop } from '../lib/desktop';
 
-const win = window.electronAPI?.window;
-const api = window.electronAPI;
-const isWindows = window.electronAPI?.platform === 'win32';
+const isWindows = desktop.platform === 'win32';
 
 export function TitleBar() {
   const { t } = useTranslation();
@@ -17,31 +16,25 @@ export function TitleBar() {
   };
 
   useEffect(() => {
-    if (!api?.onCloseDialogRequest) return;
-    return api.onCloseDialogRequest(openCloseDialog);
+    return desktop.onCloseDialogRequest(openCloseDialog);
   }, []);
 
   useEffect(() => {
-    if (!api?.onMaximizedChange) return;
-    const unsubscribe = api.onMaximizedChange(setIsMaximized);
+    const unsubscribe = desktop.onMaximizedChange(setIsMaximized);
     return unsubscribe;
   }, []);
 
   useEffect(() => {
-    win?.isMaximized().then(setIsMaximized).catch(() => {});
+    desktop.isMaximized().then(setIsMaximized).catch(() => {});
   }, []);
 
   const handleMaximize = async () => {
-    win?.maximize();
-    if (win?.isMaximized) {
-      const max = await win.isMaximized();
-      setIsMaximized(max);
-    }
+    await desktop.maximize();
+    setIsMaximized(await desktop.isMaximized());
   };
 
   const handleClose = async () => {
-    if (!win) return;
-    const result = await win.close();
+    const result = await desktop.close();
     if (result === 'ask') {
       openCloseDialog();
     }
@@ -55,10 +48,8 @@ export function TitleBar() {
     }
     dialogRef.current?.close();
     setShowCloseDialog(false);
-    if (api?.closeConfirm) {
-      await api.closeConfirm(action);
-      window.dispatchEvent(new CustomEvent('tray-mode-changed', { detail: { enabled: action === 'hide' } }));
-    }
+    await desktop.closeConfirm(action);
+    window.dispatchEvent(new CustomEvent('tray-mode-changed', { detail: { enabled: action === 'hide' } }));
   };
 
   return (
@@ -82,7 +73,7 @@ export function TitleBar() {
           >
             <button
               className="w-[46px] h-full flex items-center justify-center text-base-content/40 hover:bg-base-300 hover:text-base-content transition-colors"
-              onClick={() => win?.minimize()}
+              onClick={() => desktop.minimize()}
             >
               <svg width="10" height="1" viewBox="0 0 10 1">
                 <rect width="10" height="1" fill="currentColor" />

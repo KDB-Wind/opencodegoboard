@@ -8,15 +8,12 @@ import { useTheme } from '../components/ThemeProvider';
 import { About } from './About';
 import type { OpenCodeAccount } from '../api/types';
 import { loadQuotaNotificationSettings, saveQuotaNotificationSettings, type NotificationThreshold } from '../lib/quotaNotifications';
+import { desktop, isTauri } from '../lib/desktop';
 
 function BackendStatus() {
   const { t } = useTranslation();
   const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [restarting, setRestarting] = useState(false);
-
-  const backendPort = typeof window !== 'undefined' && window.electronAPI?.getBackendPort
-    ? window.electronAPI.getBackendPort()
-    : 8788;
 
   const check = async () => {
     setStatus('checking');
@@ -37,9 +34,7 @@ function BackendStatus() {
   const handleRestart = async () => {
     setRestarting(true);
     try {
-      if (window.electronAPI?.restartBackend) {
-        await window.electronAPI.restartBackend();
-      }
+      await desktop.restartBackend();
       await new Promise((r) => setTimeout(r, 2000));
       await check();
     } finally {
@@ -61,7 +56,7 @@ function BackendStatus() {
       </div>
       <div className="flex items-center justify-between">
         <span className="text-sm text-base-content/70">{t('settings.backendAddress')}</span>
-        <span className="text-sm font-mono">http://127.0.0.1:{backendPort}</span>
+        <span className="text-sm font-mono">{isTauri ? 'Tauri IPC (no local port)' : 'Electron local API'}</span>
       </div>
       <div className="flex gap-2">
         <button className="btn btn-outline btn-sm" onClick={check}>
@@ -131,10 +126,7 @@ export function Settings() {
 
   useEffect(() => {
     (async () => {
-      if (window.electronAPI?.getTrayMode) {
-        const t = await window.electronAPI.getTrayMode();
-        setTrayMode(t);
-      }
+      setTrayMode(await desktop.getTrayMode());
     })();
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -163,9 +155,7 @@ export function Settings() {
 
   const handleSystemLogin = async () => {
     try {
-      if (window.electronAPI?.loginOpenCodeSystem) {
-        await window.electronAPI.loginOpenCodeSystem();
-      }
+      await desktop.loginOpenCodeSystem();
       setSystemLoginOpened(true);
     } catch (e) {
       toast(t('settings.loginFailed', { msg: (e as Error).message }), 'error');
@@ -173,13 +163,9 @@ export function Settings() {
   };
 
   const handleBrowserLogin = async () => {
-    if (!window.electronAPI?.loginOpenCode) {
-      toast(t('settings.loginUnavailable'), 'error');
-      return;
-    }
     setLoggingIn(true);
     try {
-      const result = await window.electronAPI.loginOpenCode();
+      const result = await desktop.loginOpenCode();
       if (result.status === 'ok') {
         setForm((f) => ({
           ...f,
@@ -334,9 +320,7 @@ export function Settings() {
 
   const handleTrayChange = async (v: boolean) => {
     setTrayMode(v);
-    if (window.electronAPI?.setTrayMode) {
-      await window.electronAPI.setTrayMode(v);
-    }
+    await desktop.setTrayMode(v);
     if (v) {
       toast(t('settings.toastTrayOn'), 'success');
     } else {
