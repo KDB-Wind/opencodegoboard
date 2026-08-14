@@ -79,6 +79,8 @@ pub fn initialize(path: &Path) -> Result<(), String> {
 
 pub fn load_settings(path:&Path)->Value{Connection::open(path).ok().and_then(|conn|conn.query_row("SELECT payload FROM service_settings WHERE id=1",[],|row|row.get::<_,String>(0)).ok()).and_then(|text|serde_json::from_str(&text).ok()).unwrap_or_else(||json!({"refresh":{"opencode_go":{"auto_refresh":true,"interval_sec":60}},"usage_sync":{"auto_sync":true,"interval_sec":300,"backfill_pages_per_request":100,"max_pages_per_incremental":30}}))}
 
+pub fn migrate_legacy_credentials(path:&Path)->Result<usize,String>{let conn=Connection::open(path).map_err(|e|e.to_string())?;let rows:Vec<(String,String)>=conn.prepare("SELECT id,auth_cookie FROM opencode_accounts WHERE auth_cookie LIKE 'enc:%'").map_err(|e|e.to_string())?.query_map([],|row|Ok((row.get(0)?,row.get(1)?))).map_err(|e|e.to_string())?.collect::<Result<_,_>>().map_err(|e|e.to_string())?;let mut migrated=0;for(id,stored)in rows{if let Ok(secret)=crate::secrets::decrypt_electron(&stored){crate::secrets::set(&id,&secret)?;conn.execute("UPDATE opencode_accounts SET auth_cookie='keyring',updated_at=? WHERE id=?",params![now(),id]).map_err(|e|e.to_string())?;migrated+=1}}Ok(migrated)}
+
 fn account_view(row: Value) -> Value {
     let mut object = row.as_object().cloned().unwrap_or_default();
     let id=object.get("id").and_then(Value::as_str).unwrap_or_default();let stored=object.get("auth_cookie").and_then(Value::as_str).unwrap_or_default();

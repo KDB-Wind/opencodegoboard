@@ -75,6 +75,7 @@ fn main() {
             let db_path = data_dir.join("opencodegoboard.db");
             import_legacy_database(&db_path);
             backend::initialize(&db_path).map_err(std::io::Error::other)?;
+            backend::migrate_legacy_credentials(&db_path).map_err(std::io::Error::other)?;
             let settings = backend::load_settings(&db_path);
             app.manage(backend::BackendState { db_path, settings: Mutex::new(settings) });
             Ok(())
