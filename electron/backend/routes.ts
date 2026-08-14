@@ -119,6 +119,7 @@ async function fetchQuotaForDashboard(): Promise<Record<string, unknown>[]> {
     item.account_id = idByName[String(item.name ?? '')];
   }
   db.saveQuotaSnapshots(results);
+  db.autoCalibrateQuotaWeights();
   return results;
 }
 
@@ -293,6 +294,7 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     const quota = await fetchQuotaForAccount(account, 0);
     const payload = { ...quotaAccountToDict(quota), account_id: row.id };
     db.saveQuotaSnapshots([payload]);
+    db.autoCalibrateQuotaWeights(row.id);
     return c.json(payload);
   });
 
@@ -385,6 +387,7 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
       item.account_id = idByName[String(item.name ?? '')];
     }
     db.saveQuotaSnapshots(results);
+    db.autoCalibrateQuotaWeights();
     return c.json(results);
   });
 
@@ -414,6 +417,9 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     const body = QuotaWeightRuleCreate.parse(await c.req.json());
     return c.json(db.createQuotaWeightRule(body), 201);
   });
+  app.post('/api/quota/weights/calibrate', (c) => c.json({
+    created: db.autoCalibrateQuotaWeights(c.req.query('account_id') || undefined),
+  }));
   app.get('/api/quota/units', (c) => c.json(db.opencodeQuotaUnitStats(
     c.req.query('period') || '30d', c.req.query('account_id') || undefined,
   )));

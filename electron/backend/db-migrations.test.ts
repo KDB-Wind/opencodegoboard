@@ -34,6 +34,7 @@ import {
   listQuotaSnapshots,
   listQuotaWeightRules,
   createQuotaWeightRule,
+  autoCalibrateQuotaWeights,
 } from './db';
 
 let testDir = '';
@@ -221,5 +222,29 @@ describe('database migrations', () => {
     expect(listQuotaWeightRules()).toEqual(expect.arrayContaining([
       expect.objectContaining({ account_id: account.id, plan: 'go', model_pattern: 'claude-*', weight: 2.5 }),
     ]));
+  });
+
+  it('auto-calibrates dominant models from clean continuous snapshot intervals', () => {
+    initDb();
+    const account = createOpencodeAccount({ name: 'A', workspace_id: 'wrk', auth_cookie: 'secret' });
+    insertUsageRecordsIgnore(account.id, 'wrk', [
+      { usg_id: 'cal1', created_at: '2026-08-15T00:30:00Z', model: 'model-a', provider: null,
+        input_tokens: 1_000_000, output_tokens: 0, reasoning_tokens: 0, cache_read_tokens: 0,
+        cache_write_5m_tokens: 0, cache_write_1h_tokens: 0, cost_raw: 0, cost_usd: 0,
+        key_id: null, session_id: null, plan: 'go' },
+      { usg_id: 'cal2', created_at: '2026-08-15T01:30:00Z', model: 'model-a', provider: null,
+        input_tokens: 1_000_000, output_tokens: 0, reasoning_tokens: 0, cache_read_tokens: 0,
+        cache_write_5m_tokens: 0, cache_write_1h_tokens: 0, cost_raw: 0, cost_usd: 0,
+        key_id: null, session_id: null, plan: 'go' },
+    ]);
+    saveQuotaSnapshots([0, 2, 4].map((used, index) => ({
+      account_id: account.id, name: 'A', success: true,
+      updated_at: `2026-08-15T0${index}:00:00Z`,
+      windows: [{ label: 'Weekly', used, remaining: 100 - used, total: 100,
+        reset_at: '2026-08-20T00:00:00Z', reset_in_sec: 1 }],
+    })));
+    expect(autoCalibrateQuotaWeights(account.id)).toEqual([
+      expect.objectContaining({ account_id: account.id, plan: 'go', model_pattern: 'model-a', weight: 2, source: 'auto', sample_count: 2 }),
+    ]);
   });
 });

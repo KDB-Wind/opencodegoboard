@@ -157,6 +157,9 @@ export const api = {
     account_id?: string | null; plan?: string | null; model_pattern: string;
     weight: number; effective_from: string;
   }) => post<QuotaWeightRule>('/quota/weights', rule),
+  calibrateQuotaWeights: (accountId?: string) => post<{ created: QuotaWeightRule[] }>(
+    `/quota/weights/calibrate${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ''}`,
+  ),
   getQuotaUnits: (period = '30d', accountId?: string) => get<QuotaUnitStats>(
     `/quota/units?period=${encodeURIComponent(period)}${accountId ? `&account_id=${encodeURIComponent(accountId)}` : ''}`,
   ),

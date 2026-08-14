@@ -1237,6 +1237,63 @@ export function opencodeQuotaUnitStats(period = '30d', accountId?: string): Reco
   };
 }
 
+export function autoCalibrateQuotaWeights(accountId?: string): Array<Record<string, unknown>> {
+  const intervals = listQuotaReconciliationInputs(accountId);
+  const samples = new Map<string, Array<{ weight: number; share: number; capturedAt: string }>>();
+  const conn = getDb();
+  for (const interval of intervals) {
+    const usedDelta = Number(interval.used) - Number(interval.previous_used);
+    const elapsedHours = (Date.parse(String(interval.captured_at)) - Date.parse(String(interval.previous_captured_at))) / 3600000;
+    if (
+      String(interval.reset_at) !== String(interval.previous_reset_at) ||
+      Number(interval.total) !== Number(interval.previous_total) ||
+      usedDelta <= 0 || usedDelta > 50 || elapsedHours <= 0 ||
+      Number(interval.local_request_count || 0) <= 0
+    ) continue;
+    const models = conn.prepare(`
+      SELECT model, plan,
+        SUM(input_tokens + output_tokens + reasoning_tokens + cache_read_tokens + cache_write_5m_tokens + cache_write_1h_tokens) AS tokens
+      FROM usage_records
+      WHERE account_id = ? AND created_at > ? AND created_at <= ?
+      GROUP BY model, plan
+      ORDER BY tokens DESC
+    `).all(interval.account_id, interval.previous_captured_at, interval.captured_at) as Array<Record<string, unknown>>;
+    const totalTokens = models.reduce((sum, row) => sum + Number(row.tokens || 0), 0);
+    const dominant = models[0];
+    if (!dominant || totalTokens <= 0) continue;
+    const share = Number(dominant.tokens) / totalTokens;
+    if (share < 0.8) continue;
+    const weight = usedDelta / (totalTokens / 1_000_000);
+    if (!Number.isFinite(weight) || weight <= 0) continue;
+    const key = [interval.account_id, String(dominant.plan || ''), dominant.model].join('\u0000');
+    const group = samples.get(key) ?? [];
+    group.push({ weight, share, capturedAt: String(interval.captured_at) });
+    samples.set(key, group);
+  }
+
+  const created: Array<Record<string, unknown>> = [];
+  for (const [key, group] of samples) {
+    if (group.length < 2) continue;
+    const [calibrationAccountId, plan, model] = key.split('\u0000');
+    const sorted = group.map((sample) => sample.weight).sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    const observed = sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+    const weight = Math.max(0.05, Math.min(1000, observed));
+    const confidence = Math.min(1, group.length / 6) *
+      (group.reduce((sum, sample) => sum + sample.share, 0) / group.length);
+    const latest = listQuotaWeightRules().find((rule) =>
+      rule.source === 'auto' && rule.account_id === calibrationAccountId &&
+      String(rule.plan || '') === plan && rule.model_pattern === model);
+    if (latest && Math.abs(Number(latest.weight) - weight) / Number(latest.weight) < 0.05) continue;
+    created.push(createQuotaWeightRule({
+      account_id: calibrationAccountId, plan: plan || null, model_pattern: model,
+      weight, effective_from: group.map((sample) => sample.capturedAt).sort()[group.length - 1],
+      source: 'auto', sample_count: group.length, confidence,
+    }));
+  }
+  return created;
+}
+
 export function listUsageRecordsForExport(): UsageRecordWithAccount[] {
   const rows = getDb().prepare(`
     SELECT ur.*, oa.name AS account_name
