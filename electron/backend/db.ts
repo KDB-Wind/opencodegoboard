@@ -1094,6 +1094,39 @@ export function listQuotaSnapshots(opts: {
   `).all(...params, limit) as Array<Record<string, unknown>>;
 }
 
+export function listQuotaReconciliationInputs(accountId?: string): Array<Record<string, unknown>> {
+  const params: unknown[] = accountId ? [accountId] : [];
+  const accountWhere = accountId ? 'WHERE account_id = ?' : '';
+  return getDb().prepare(`
+    WITH ordered AS (
+      SELECT qs.*,
+        LAG(captured_at) OVER window_rows AS previous_captured_at,
+        LAG(used) OVER window_rows AS previous_used,
+        LAG(remaining) OVER window_rows AS previous_remaining,
+        LAG(total) OVER window_rows AS previous_total,
+        LAG(reset_at) OVER window_rows AS previous_reset_at
+      FROM quota_snapshots qs
+      ${accountWhere}
+      WINDOW window_rows AS (PARTITION BY account_id, window_label ORDER BY captured_at)
+    )
+    SELECT ordered.*, oa.name AS account_name,
+      (SELECT COUNT(*) FROM usage_records ur
+       WHERE ur.account_id = ordered.account_id
+         AND ur.created_at > ordered.previous_captured_at
+         AND ur.created_at <= ordered.captured_at) AS local_request_count,
+      (SELECT COALESCE(SUM(input_tokens + output_tokens + reasoning_tokens), 0)
+       FROM usage_records ur
+       WHERE ur.account_id = ordered.account_id
+         AND ur.created_at > ordered.previous_captured_at
+         AND ur.created_at <= ordered.captured_at) AS local_tokens
+    FROM ordered
+    JOIN opencode_accounts oa ON oa.id = ordered.account_id
+    WHERE ordered.previous_captured_at IS NOT NULL
+    ORDER BY ordered.captured_at DESC
+    LIMIT 5000
+  `).all(...params) as Array<Record<string, unknown>>;
+}
+
 export function listUsageRecordsForExport(): UsageRecordWithAccount[] {
   const rows = getDb().prepare(`
     SELECT ur.*, oa.name AS account_name

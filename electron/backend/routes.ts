@@ -16,7 +16,7 @@ import { resolveAccountWorkspaceId } from './opencode-usage';
 import { fetchAllQuotas, fetchQuotaForAccount, quotaAccountToDict } from './quota';
 import * as syncProgress from './sync-progress';
 import { backfillUsage, syncResultToDict, syncUsage } from './usage-sync';
-import { analyzeQuotaWindows } from './quota-intelligence';
+import { analyzeQuotaWindows, reconcileQuotaWindows } from './quota-intelligence';
 
 const OpenCodeAccountCreate = z.object({
   name: z.string(),
@@ -395,6 +395,12 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     })),
   }));
 
+  app.get('/api/quota/reconciliation', (c) => c.json({
+    events: reconcileQuotaWindows(db.listQuotaReconciliationInputs(
+      c.req.query('account_id') || undefined,
+    )),
+  }));
+
   app.get('/api/dashboard', async (c) => {
     const period = c.req.query('period') || '30d';
     if (!/^(5h|today|all|\d+d)$/.test(period)) {
@@ -408,6 +414,7 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     const modelTokens = db.opencodeModelTokenStats(period);
     const dataHealth = db.listUsageDataHealth();
     const quotaIntelligence = analyzeQuotaWindows(db.listQuotaSnapshots({ limit: 5000 }));
+    const quotaReconciliation = reconcileQuotaWindows(db.listQuotaReconciliationInputs());
     return c.json({
       overview,
       quota,
@@ -418,6 +425,7 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
       model_tokens: modelTokens,
       data_health: dataHealth,
       quota_intelligence: quotaIntelligence,
+      quota_reconciliation: quotaReconciliation.slice(0, 50),
       period,
     });
   });

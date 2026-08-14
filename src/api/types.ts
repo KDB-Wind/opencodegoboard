@@ -66,6 +66,21 @@ export interface QuotaIntelligence {
   alert_level: 'safe' | 'warning' | 'critical' | 'unknown';
 }
 
+export interface QuotaReconciliationEvent {
+  account_id: string;
+  account_name: string;
+  window_label: string;
+  from: string;
+  to: string;
+  event_type: 'matched' | 'reset' | 'top_up' | 'snapshot_gap' | 'missing_local_usage' | 'rule_change';
+  official_used_delta: number;
+  official_remaining_delta: number;
+  local_request_count: number;
+  local_tokens: number;
+  elapsed_hours: number;
+  excluded_from_calibration: boolean;
+}
+
 export interface Overview {
   opencode: {
     avg_effective_remaining: number;

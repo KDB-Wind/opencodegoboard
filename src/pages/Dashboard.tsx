@@ -209,6 +209,7 @@ export function Dashboard() {
     (health) => !health.healthy && health.last_sync_status != null,
   );
   const quotaIntelligence = data?.quota_intelligence ?? [];
+  const reconciliationEvents = (data?.quota_reconciliation ?? []).filter((event) => event.event_type !== 'matched');
   const tokenBreakdown = {
     uncachedInput: tokens.reduce((s, m) => s + Number(m.uncached_input_tokens ?? m.total_input_tokens ?? 0), 0),
     cacheHit: tokens.reduce((s, m) => s + Number(m.cache_hit_tokens ?? 0), 0),
@@ -350,6 +351,21 @@ export function Dashboard() {
           </div>
         )}
       </div>
+
+      {reconciliationEvents.length > 0 && (
+        <div className="border border-base-200 rounded-xl p-4">
+          <div className="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-3">{t('dashboard.reconciliationTitle')}</div>
+          <div className="space-y-2">
+            {reconciliationEvents.slice(0, 5).map((event) => (
+              <div key={`${event.account_id}:${event.window_label}:${event.to}`} className="flex items-center gap-3 text-sm">
+                <span className="badge badge-outline badge-sm">{t(`dashboard.reconcile_${event.event_type}`)}</span>
+                <span className="font-medium">{event.account_name} · {event.window_label}</span>
+                <span className="text-muted ml-auto">{new Date(event.to).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-4">
         <div className="flex-1 border border-base-200 rounded-xl p-4 flex flex-col min-h-0">

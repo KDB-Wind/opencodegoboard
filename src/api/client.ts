@@ -7,6 +7,7 @@ import type {
   QuotaAccount,
   QuotaSnapshot,
   QuotaIntelligence,
+  QuotaReconciliationEvent,
   ServiceConfig,
   UsageRecord,
   UsageResponse,
@@ -113,6 +114,7 @@ export const api = {
     model_tokens: ModelTokenStat[];
     data_health: UsageDataHealth[];
     quota_intelligence: QuotaIntelligence[];
+    quota_reconciliation: QuotaReconciliationEvent[];
     period: string;
   }>(`/dashboard?period=${period}`, signal),
   // Config
@@ -143,6 +145,9 @@ export const api = {
   },
   getQuotaIntelligence: (accountId?: string) => get<{ windows: QuotaIntelligence[] }>(
     `/quota/intelligence${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ''}`,
+  ),
+  getQuotaReconciliation: (accountId?: string) => get<{ events: QuotaReconciliationEvent[] }>(
+    `/quota/reconciliation${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ''}`,
   ),
   getAccountQuota: (id: string) => get<QuotaAccount>(`/accounts/opencode/${id}/quota`),
 

@@ -98,6 +98,13 @@
     ,"alert_warning": "关注"
     ,"alert_critical": "紧急"
     ,"alert_unknown": "待采样"
+    ,"reconciliationTitle": "额度变化解释"
+    ,"reconcile_reset": "额度重置"
+    ,"reconcile_top_up": "额度补充"
+    ,"reconcile_snapshot_gap": "快照间隔过大"
+    ,"reconcile_missing_local_usage": "本地用量可能缺失"
+    ,"reconcile_rule_change": "额度规则变化"
+    ,"reconcile_matched": "已对账"
   },
   "tokenStats": {
     "title": "用量统计",

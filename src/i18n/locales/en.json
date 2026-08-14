@@ -98,6 +98,13 @@
     ,"alert_warning": "Watch"
     ,"alert_critical": "Critical"
     ,"alert_unknown": "Sampling"
+    ,"reconciliationTitle": "Quota change explanations"
+    ,"reconcile_reset": "Quota reset"
+    ,"reconcile_top_up": "Quota top-up"
+    ,"reconcile_snapshot_gap": "Snapshot gap"
+    ,"reconcile_missing_local_usage": "Local usage may be missing"
+    ,"reconcile_rule_change": "Quota rule changed"
+    ,"reconcile_matched": "Reconciled"
   },
   "tokenStats": {
     "title": "Usage Stats",

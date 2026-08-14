@@ -80,3 +80,31 @@ export function analyzeQuotaWindows(
     };
   }).sort((a, b) => Number(a.hours_to_exhaust ?? Infinity) - Number(b.hours_to_exhaust ?? Infinity));
 }
+
+export function reconcileQuotaWindows(rows: Array<Record<string, unknown>>): Array<Record<string, unknown>> {
+  return rows.map((row) => {
+    const usedDelta = Number(row.used) - Number(row.previous_used);
+    const remainingDelta = Number(row.remaining) - Number(row.previous_remaining);
+    const elapsedHours = (Date.parse(String(row.captured_at)) - Date.parse(String(row.previous_captured_at))) / 3600000;
+    const resetChanged = String(row.reset_at) !== String(row.previous_reset_at);
+    const totalChanged = Number(row.total) !== Number(row.previous_total);
+    const localRequests = Number(row.local_request_count || 0);
+    const gapThreshold = String(row.window_label).includes('5h') ? 12 : 48;
+    let eventType = 'matched';
+    if (totalChanged) eventType = 'rule_change';
+    else if (resetChanged || usedDelta < -20) eventType = 'reset';
+    else if (remainingDelta > 5 && usedDelta <= 0) eventType = 'top_up';
+    else if (elapsedHours > gapThreshold) eventType = 'snapshot_gap';
+    else if (usedDelta > 0.5 && localRequests === 0) eventType = 'missing_local_usage';
+    return {
+      account_id: String(row.account_id), account_name: String(row.account_name),
+      window_label: String(row.window_label), from: String(row.previous_captured_at),
+      to: String(row.captured_at), event_type: eventType,
+      official_used_delta: Math.round(usedDelta * 100) / 100,
+      official_remaining_delta: Math.round(remainingDelta * 100) / 100,
+      local_request_count: localRequests, local_tokens: Number(row.local_tokens || 0),
+      elapsed_hours: Math.round(elapsedHours * 10) / 10,
+      excluded_from_calibration: eventType !== 'matched',
+    };
+  });
+}
