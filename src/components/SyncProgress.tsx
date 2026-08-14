@@ -19,7 +19,7 @@ export function SyncProgressBar({ status, current, total }: SyncProgressProps) {
         <div className="h-1.5 bg-base-200 rounded-full overflow-hidden">
           <div className="h-full bg-success rounded-full" style={{ width: '100%' }} />
         </div>
-        <div className="text-[10px] text-success/60 text-center mt-0.5">{t('syncProgress.done')}</div>
+        <div className="text-xs text-success text-center mt-0.5">{t('syncProgress.done')}</div>
       </div>
     );
   }
@@ -32,7 +32,7 @@ export function SyncProgressBar({ status, current, total }: SyncProgressProps) {
           style={{ width: `${Math.max(pct, 4)}%` }}
         />
       </div>
-      <div className="text-[10px] text-base-content/40 text-center mt-0.5 tabular-nums">
+      <div className="text-xs text-muted text-center mt-0.5 tabular-nums">
         {current > 0 ? t('syncProgress.pages', { current, total }) : t('syncProgress.syncing')}
       </div>
     </div>

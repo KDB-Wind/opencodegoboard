@@ -38,7 +38,7 @@ export function TimeRangeTabs({ value, onChange, size = 'sm' }: TimeRangeTabsPro
           type="button"
           aria-pressed={value === o.value}
           className={`rounded-md font-medium transition-colors whitespace-nowrap focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-base-200 ${
-            compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-[11px]'
+            compact ? 'px-1.5 py-0.5 text-xs' : 'px-2 py-0.5 text-xs'
           } ${
             value === o.value
               ? 'bg-primary text-primary-content shadow-sm'

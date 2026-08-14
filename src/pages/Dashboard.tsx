@@ -61,12 +61,12 @@ function QuotaBar({ windows }: { windows: QuotaWindow[] }) {
               <div className={`h-full rounded-full transition-all duration-500 ${c}`} style={{ width: `${v}%` }} />
             </div>
             {w.label === '5h Rolling' && w.reset_in_sec > 0 && (
-              <div className="text-[10px] text-base-content/30 mt-0.5">
+              <div className="text-xs text-subtle mt-0.5">
                 {t('dashboard.countdown', { time: fmtTime(w.reset_in_sec) })}
               </div>
             )}
             {w.label !== '5h Rolling' && w.reset_at && (
-              <div className="text-[10px] text-base-content/30 mt-0.5">
+              <div className="text-xs text-subtle mt-0.5">
                 {t('dashboard.resetTime', { date: new Date(w.reset_at).toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'en-US') })}
               </div>
             )}
@@ -126,11 +126,11 @@ function ModelDonut({ models: raw }: { models: { model: string; total_input_toke
           {top.map((m, i) => (
             <div key={m.model}>
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[10px] font-bold text-base-content/20 shrink-0 w-4">#{i + 1}</span>
+                <span className="text-xs font-bold text-muted shrink-0 w-4">#{i + 1}</span>
                 <ModelIcon model={m.model} />
                 <span className="text-sm font-semibold truncate">{m.model}</span>
               </div>
-              <div className="text-[11px] text-base-content/40 tabular-nums ml-[22px] mt-0.5 truncate">
+              <div className="text-xs text-muted tabular-nums ml-[22px] mt-0.5 truncate">
                 {t('common.input')} {fmt(m.total_input_tokens)} · {t('common.output')} {fmt(m.total_output_tokens)} · {t('dashboard.requests', { count: m.request_count })}
               </div>
             </div>
@@ -147,7 +147,7 @@ function ModelDonut({ models: raw }: { models: { model: string; total_input_toke
           <div className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: DONUT_COLORS[1] }} />
           <span className="text-[11px] text-base-content/50">{t('common.output')} {fmt(chartData[1].value)}</span>
         </div>
-        <span className="text-[11px] text-base-content/30 ml-auto shrink-0">{t('common.total')} {fmt(total)}</span>
+        <span className="text-xs text-subtle ml-auto shrink-0">{t('common.total')} {fmt(total)}</span>
       </div>
     </div>
   );
@@ -264,7 +264,7 @@ export function Dashboard() {
           <div className="h-1 bg-base-200 rounded-full overflow-hidden relative">
             <div className="absolute inset-0 h-full bg-gradient-to-r from-primary to-secondary rounded-full animate-loading-bar" />
           </div>
-          <p className="text-[11px] text-base-content/40 text-center">{t('common.loading')}</p>
+          <p className="text-xs text-muted text-center">{t('common.loading')}</p>
         </div>
       </div>
     );
@@ -299,7 +299,7 @@ export function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {hero.map((h) => (
           <div key={h.label} className="border border-base-200 rounded-xl px-3 py-2.5">
-            <div className="text-[10px] font-bold text-base-content/40 uppercase tracking-wider truncate">{h.label}</div>
+            <div className="metric-label tracking-wider truncate">{h.label}</div>
             {h.breakdown ? (
               <TokenBreakdownTooltip {...h.breakdown}>
                 <div className={`font-bold mt-0.5 ${h.size === 'sm' ? 'text-xl' : 'text-2xl'}`}>{h.value}</div>
@@ -307,7 +307,7 @@ export function Dashboard() {
             ) : (
               <div className={`font-bold mt-0.5 ${h.size === 'sm' ? 'text-xl' : 'text-2xl'}`}>{h.value}</div>
             )}
-            <div className="text-[10px] text-base-content/40 mt-0.5 truncate">{h.sub}</div>
+            <div className="text-xs text-muted mt-0.5 truncate">{h.sub}</div>
           </div>
         ))}
       </div>
@@ -327,7 +327,7 @@ export function Dashboard() {
               ))}
             </div>
           )}
-          <div className="text-[11px] text-base-content/30 mt-3 pt-3 border-t border-base-200 shrink-0">
+          <div className="text-xs text-subtle mt-3 pt-3 border-t border-base-200 shrink-0">
             {quota.some((q) => q.windows.some((w) => w.used >= 100))
               ? t('dashboard.partialExhausted')
               : quota.some((q) => q.windows.some((w) => w.used >= 80))
@@ -342,7 +342,7 @@ export function Dashboard() {
             <TimeRangeTabs value={topPeriod} onChange={setTopPeriod} size="xs" />
           </div>
           <ModelDonut models={topTokens} />
-          <div className="text-[11px] text-base-content/30 mt-3 pt-3 border-t border-base-200">
+          <div className="text-xs text-subtle mt-3 pt-3 border-t border-base-200">
             {topTokens.length > 0
               ? t('dashboard.mostConsumed', {
                   model: topTokens[0]?.model ?? '',

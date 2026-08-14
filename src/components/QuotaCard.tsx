@@ -46,7 +46,7 @@ export function QuotaCard({ name, windows }: QuotaCardProps) {
           {windows.map((w) => (
             <div key={w.label} className="flex flex-col items-center gap-1">
               <QuotaRing label={w.label} used={w.used} blocked={w.blocked} />
-              <span className="text-[10px] text-base-content/60">{labels[w.label] || w.label}</span>
+              <span className="text-xs text-muted">{labels[w.label] || w.label}</span>
             </div>
           ))}
         </div>

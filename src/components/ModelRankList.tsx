@@ -78,10 +78,10 @@ export function ModelRankList({ data }: ModelRankListProps) {
                 />
               </div>
               <div className="flex items-center justify-between mt-0.5">
-                <span className="text-[10px] text-base-content/40">
+                <span className="text-xs text-muted">
                   {t('tokenStats.pctOfTotal', { pct: pct.toFixed(1) })}
                 </span>
-                <span className="text-[10px] text-base-content/40">
+                <span className="text-xs text-muted">
                   {t('tokenStats.requestsIn', { count: m.request_count.toLocaleString() })}
                 </span>
               </div>

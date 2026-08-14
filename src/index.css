@@ -15,6 +15,26 @@ body {
   overflow: hidden;
 }
 
+:root {
+  --readable-muted: color-mix(in oklab, var(--color-base-content) 68%, transparent);
+  --readable-subtle: color-mix(in oklab, var(--color-base-content) 54%, transparent);
+  --readable-border: color-mix(in oklab, var(--color-base-content) 16%, transparent);
+  --readable-positive: var(--color-success);
+  --readable-warning: var(--color-warning);
+  --readable-danger: var(--color-error);
+}
+
+.text-muted { color: var(--readable-muted); }
+.text-subtle { color: var(--readable-subtle); }
+.border-semantic { border-color: var(--readable-border); }
+.metric-label {
+  color: var(--readable-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1rem;
+  text-transform: uppercase;
+}
+
 * {
   scrollbar-width: none;
   -ms-overflow-style: none;

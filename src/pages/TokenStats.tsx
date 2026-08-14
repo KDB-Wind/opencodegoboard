@@ -88,7 +88,7 @@ export function TokenStats() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold">{t('tokenStats.title')}</h1>
-          <p className="text-xs text-base-content/40 mt-1">{t('tokenStats.subtitle')}</p>
+          <p className="text-xs text-muted mt-1">{t('tokenStats.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -136,7 +136,7 @@ export function TokenStats() {
           { label: t('tokenStats.totalCost'), value: `$${totalCost.toFixed(4)}` },
         ].map((item) => (
           <div key={item.label} className="border border-base-200 rounded-lg px-4 py-2.5 flex-1">
-            <div className="text-[11px] font-bold text-base-content/40 uppercase">{item.label}</div>
+            <div className="metric-label">{item.label}</div>
             {item.breakdown ? (
               <TokenBreakdownTooltip {...item.breakdown}>
                 <div className="text-lg font-bold mt-0.5">{item.value}</div>
@@ -152,7 +152,7 @@ export function TokenStats() {
         <div className="p-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-xs font-bold text-base-content/50 uppercase">{t('tokenStats.modelUsage')}</h3>
-            <span className="text-[10px] text-base-content/30">{t('tokenStats.modelCount', { count: filteredStats.length })}</span>
+            <span className="text-xs text-subtle">{t('tokenStats.modelCount', { count: filteredStats.length })}</span>
           </div>
           <ModelRankList data={filteredStats} />
         </div>
