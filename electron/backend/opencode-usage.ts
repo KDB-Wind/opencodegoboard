@@ -29,6 +29,22 @@ export interface ParsedUsageRecord {
   plan: string | null;
 }
 
+export interface UsageParseResult {
+  records: ParsedUsageRecord[];
+  anchor_count: number;
+  skipped_count: number;
+}
+
+export class UsageResponseParseError extends Error {
+  readonly parseErrorCount: number;
+
+  constructor(anchorCount: number, skippedCount: number) {
+    super(`用量响应包含 ${anchorCount} 条记录锚点，其中 ${skippedCount} 条无法解析`);
+    this.name = 'UsageResponseParseError';
+    this.parseErrorCount = skippedCount;
+  }
+}
+
 export function toDbDict(r: ParsedUsageRecord): Record<string, unknown> {
   return {
     usg_id: r.usg_id,
@@ -47,7 +63,7 @@ export function toDbDict(r: ParsedUsageRecord): Record<string, unknown> {
   };
 }
 
-export function parseUsageResponse(text: string): ParsedUsageRecord[] {
+export function parseUsageResponseDetailed(text: string): UsageParseResult {
   const plans = new Map<string, string>();
   PLAN_RE.lastIndex = 0;
   let pm: RegExpExecArray | null;
@@ -89,7 +105,15 @@ export function parseUsageResponse(text: string): ParsedUsageRecord[] {
       plan: plans.get(usgId) ?? null,
     });
   }
-  return records;
+  return {
+    records,
+    anchor_count: anchors.length,
+    skipped_count: anchors.length - records.length,
+  };
+}
+
+export function parseUsageResponse(text: string): ParsedUsageRecord[] {
+  return parseUsageResponseDetailed(text).records;
 }
 
 function usageServerId(): string {
@@ -155,7 +179,11 @@ export async function fetchUsagePage(opts: {
     throw new Error(`使用记录查询返回 HTTP ${resp.status}`);
   }
   const text = (await resp.text()).slice(0, MAX_RESPONSE_BYTES);
-  return parseUsageResponse(text);
+  const parsed = parseUsageResponseDetailed(text);
+  if (parsed.skipped_count > 0) {
+    throw new UsageResponseParseError(parsed.anchor_count, parsed.skipped_count);
+  }
+  return parsed.records;
 }
 
 export async function resolveAccountWorkspaceId(

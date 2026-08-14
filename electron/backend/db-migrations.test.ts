@@ -44,6 +44,17 @@ describe('database migrations', () => {
         (column) => column.name,
       ),
     ).toEqual(expect.arrayContaining(['cache_read_tokens', 'cache_write_1h_tokens']));
+    expect(
+      (getDb().pragma('table_info(usage_sync_state)') as Array<{ name: string }>).map(
+        (column) => column.name,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        'last_success_at',
+        'last_failed_page',
+        'last_parse_error_count',
+      ]),
+    );
 
     expect(() => initDb()).not.toThrow();
     expect(getSchemaVersion()).toBe(CURRENT_SCHEMA_VERSION);

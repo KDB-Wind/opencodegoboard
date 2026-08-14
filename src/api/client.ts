@@ -8,6 +8,7 @@ import type {
   ServiceConfig,
   UsageRecord,
   UsageResponse,
+  UsageDataHealth,
 } from './types';
 
 const backendPort = typeof window !== 'undefined' && window.electronAPI?.getBackendPort
@@ -71,6 +72,7 @@ export const api = {
     quota: QuotaAccount[];
     recent_usage: { records: UsageRecord[]; total: number };
     model_tokens: ModelTokenStat[];
+    data_health: UsageDataHealth[];
     period: string;
   }>(`/dashboard?period=${period}`),
   // Config
@@ -144,4 +146,5 @@ export const api = {
 
   // Health
   health: () => get<{ status: string }>('/health'),
+  dataHealth: () => get<{ accounts: UsageDataHealth[] }>('/health/data'),
 };

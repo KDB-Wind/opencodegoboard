@@ -479,6 +479,7 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     const overview = await buildOverview({ opencodeQuotas: quota });
     const [usageRecords, usageTotal] = db.listAllUsageRecords({ offset: 0, limit: 10 });
     const modelTokens = db.opencodeModelTokenStats(period);
+    const dataHealth = db.listUsageDataHealth();
     return c.json({
       overview,
       quota,
@@ -487,6 +488,7 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
         total: usageTotal,
       },
       model_tokens: modelTokens,
+      data_health: dataHealth,
       period,
     });
   });
@@ -498,6 +500,8 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
       return c.json({ detail: String(exc instanceof Error ? exc.message : exc) }, 500);
     }
   });
+
+  app.get('/api/health/data', (c) => c.json({ accounts: db.listUsageDataHealth() }));
 
   app.get('/api/analytics/opencode/daily', (c) => {
     const days = Math.max(1, Math.min(Number(c.req.query('days') || 30), 365));

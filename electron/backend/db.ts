@@ -58,6 +58,9 @@ export interface UsageSyncStateRow {
   last_sync_at: string | null;
   last_sync_status: string | null;
   last_sync_error: string | null;
+  last_success_at: string | null;
+  last_failed_page: number | null;
+  last_parse_error_count: number;
   last_inserted_count: number;
   deepest_page_fetched: number;
   total_records: number;
@@ -174,7 +177,7 @@ interface DbMigration {
   up: (conn: Database.Database) => void;
 }
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 const MIGRATIONS: DbMigration[] = [
   {
@@ -276,6 +279,31 @@ const MIGRATIONS: DbMigration[] = [
      WHERE ABS(cost_usd - cost_raw / 100000000.0) > 0.0000001`);
     },
   },
+  {
+    version: 3,
+    name: 'usage data health fields',
+    up: (conn) => {
+      const columns = new Set(
+        (conn.pragma('table_info(usage_sync_state)') as Array<{ name: string }>).map(
+          (column) => column.name,
+        ),
+      );
+      if (!columns.has('last_success_at')) {
+        conn.exec('ALTER TABLE usage_sync_state ADD COLUMN last_success_at TEXT');
+      }
+      if (!columns.has('last_failed_page')) {
+        conn.exec('ALTER TABLE usage_sync_state ADD COLUMN last_failed_page INTEGER');
+      }
+      if (!columns.has('last_parse_error_count')) {
+        conn.exec(
+          'ALTER TABLE usage_sync_state ADD COLUMN last_parse_error_count INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+      conn.exec(`UPDATE usage_sync_state
+        SET last_success_at = last_sync_at
+        WHERE last_success_at IS NULL AND last_sync_status = 'ok'`);
+    },
+  },
 ];
 
 export function getSchemaVersion(conn: Database.Database = getDb()): number {
@@ -337,6 +365,10 @@ export function usageSyncStateToDict(s: UsageSyncStateRow): Record<string, unkno
     last_sync_at: s.last_sync_at,
     last_sync_status: s.last_sync_status,
     last_sync_error: s.last_sync_error,
+    last_success_at: s.last_success_at,
+    last_failed_page: s.last_failed_page,
+    last_parse_error_count: s.last_parse_error_count,
+    healthy: s.last_sync_status === 'ok' && s.last_parse_error_count === 0,
     last_inserted_count: s.last_inserted_count,
     deepest_page_fetched: s.deepest_page_fetched,
     total_records: s.total_records,
@@ -748,6 +780,9 @@ export function getUsageSyncState(accountId: string): UsageSyncStateRow {
       last_sync_at: null,
       last_sync_status: null,
       last_sync_error: null,
+      last_success_at: null,
+      last_failed_page: null,
+      last_parse_error_count: 0,
       last_inserted_count: 0,
       deepest_page_fetched: -1,
       total_records: 0,
@@ -760,6 +795,9 @@ export function getUsageSyncState(accountId: string): UsageSyncStateRow {
     last_sync_at: row.last_sync_at != null ? String(row.last_sync_at) : null,
     last_sync_status: row.last_sync_status != null ? String(row.last_sync_status) : null,
     last_sync_error: row.last_sync_error != null ? String(row.last_sync_error) : null,
+    last_success_at: row.last_success_at != null ? String(row.last_success_at) : null,
+    last_failed_page: row.last_failed_page != null ? Number(row.last_failed_page) : null,
+    last_parse_error_count: Number(row.last_parse_error_count || 0),
     last_inserted_count: Number(row.last_inserted_count),
     deepest_page_fetched: Number(row.deepest_page_fetched),
     total_records: Number(row.total_records),
@@ -773,6 +811,9 @@ export function updateUsageSyncState(accountId: string, fields: Record<string, u
     'last_sync_at',
     'last_sync_status',
     'last_sync_error',
+    'last_success_at',
+    'last_failed_page',
+    'last_parse_error_count',
     'last_inserted_count',
     'deepest_page_fetched',
     'total_records',
@@ -791,6 +832,26 @@ export function updateUsageSyncState(accountId: string, fields: Record<string, u
   getDb()
     .prepare(`UPDATE usage_sync_state SET ${updates.join(', ')} WHERE account_id = ?`)
     .run(...values);
+}
+
+export function listUsageDataHealth(): Record<string, unknown>[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT s.*, a.name AS account_name
+       FROM usage_sync_state s
+       JOIN opencode_accounts a ON a.id = s.account_id
+       WHERE a.enabled = 1
+       ORDER BY a.created_at ASC`,
+    )
+    .all() as Array<Record<string, unknown>>;
+  return rows.map((row) => {
+    const state = getUsageSyncState(String(row.account_id));
+    return {
+      account_id: state.account_id,
+      account_name: String(row.account_name),
+      ...usageSyncStateToDict(state),
+    };
+  });
 }
 
 export function refreshUsageSyncTotals(accountId: string): void {

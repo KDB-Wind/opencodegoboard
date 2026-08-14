@@ -75,7 +75,10 @@
     "syncAll": "Sync & Backfill",
     "syncing": "Syncing…",
     "syncDone": "Sync complete, {{count}} new records",
-    "syncFailed": "Sync failed: {{error}}"
+    "syncFailed": "Sync failed: {{error}}",
+    "dataHealthWarning": "Some local usage data may be incomplete",
+    "failedPage": "page {{page}} failed",
+    "parseErrors": "{{count}} parse failures"
   },
   "tokenStats": {
     "title": "Usage Stats",

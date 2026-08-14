@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { describe, expect, it } from 'vitest';
-import { parseUsageResponse } from './opencode-usage';
+import { parseUsageResponse, parseUsageResponseDetailed } from './opencode-usage';
 
 describe('parseUsageResponse', () => {
   it('accepts compact and whitespace serializer layouts', () => {
@@ -31,5 +31,8 @@ describe('parseUsageResponse', () => {
 
   it('skips a usage anchor that has no creation timestamp', () => {
     expect(parseUsageResponse('id: "usg_incomplete", model: "x"')).toEqual([]);
+    expect(
+      parseUsageResponseDetailed('id: "usg_incomplete", model: "x"'),
+    ).toMatchObject({ anchor_count: 1, skipped_count: 1 });
   });
 });

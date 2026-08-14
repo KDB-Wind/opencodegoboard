@@ -12,6 +12,20 @@ import {
 
 const BATCH_SIZE = 5;
 
+class UsagePageSyncError extends Error {
+  readonly page: number;
+  readonly parseErrorCount: number;
+
+  constructor(page: number, cause: Error) {
+    super(`使用记录第 ${page} 页同步失败: ${cause.message}`);
+    this.name = 'UsagePageSyncError';
+    this.page = page;
+    this.parseErrorCount = Number(
+      (cause as Error & { parseErrorCount?: number }).parseErrorCount ?? 0,
+    );
+  }
+}
+
 export interface SyncResult {
   inserted: number;
   pages_fetched: number;
@@ -74,7 +88,7 @@ async function fetchAndInsertBatch(
   const failedIndex = results.findIndex((result) => result instanceof Error);
   if (failedIndex >= 0) {
     const error = results[failedIndex] as Error;
-    throw new Error(`使用记录第 ${pages[failedIndex]} 页同步失败: ${error.message}`);
+    throw new UsagePageSyncError(pages[failedIndex], error);
   }
 
   let newInserted = 0;
@@ -186,6 +200,9 @@ export async function syncUsage(
       last_sync_at: syncAt,
       last_sync_status: 'ok',
       last_sync_error: null,
+      last_success_at: syncAt,
+      last_failed_page: null,
+      last_parse_error_count: 0,
       last_inserted_count: insertedTotal,
       deepest_page_fetched: deepest,
     });
@@ -199,6 +216,8 @@ export async function syncUsage(
       last_sync_at: syncAt,
       last_sync_status: insertedTotal > 0 || pagesFetched > 0 ? 'partial' : 'error',
       last_sync_error: msg,
+      last_failed_page: exc instanceof UsagePageSyncError ? exc.page : null,
+      last_parse_error_count: exc instanceof UsagePageSyncError ? exc.parseErrorCount : 0,
       last_inserted_count: insertedTotal,
     });
     throw exc;
@@ -251,6 +270,9 @@ export async function backfillUsage(
       last_sync_at: syncAt,
       last_sync_status: 'ok',
       last_sync_error: null,
+      last_success_at: syncAt,
+      last_failed_page: null,
+      last_parse_error_count: 0,
       last_inserted_count: insertedTotal,
     });
     syncProgress.finish(account.id, insertedTotal);
@@ -262,6 +284,8 @@ export async function backfillUsage(
       last_sync_at: syncAt,
       last_sync_status: insertedTotal > 0 || pagesFetched > 0 ? 'partial' : 'error',
       last_sync_error: msg,
+      last_failed_page: exc instanceof UsagePageSyncError ? exc.page : null,
+      last_parse_error_count: exc instanceof UsagePageSyncError ? exc.parseErrorCount : 0,
       last_inserted_count: insertedTotal,
     });
     throw exc;

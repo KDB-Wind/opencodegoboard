@@ -205,6 +205,9 @@ export function Dashboard() {
   const tokens = data?.model_tokens ?? [];
   const todayTokens = todayData?.stats ?? [];
   const topTokens = topData?.stats ?? [];
+  const unhealthyAccounts = (data?.data_health ?? []).filter(
+    (health) => !health.healthy && health.last_sync_status != null,
+  );
   const tokenBreakdown = {
     uncachedInput: tokens.reduce((s, m) => s + Number(m.uncached_input_tokens ?? m.total_input_tokens ?? 0), 0),
     cacheHit: tokens.reduce((s, m) => s + Number(m.cache_hit_tokens ?? 0), 0),
@@ -268,6 +271,23 @@ export function Dashboard() {
           {syncing ? t('dashboard.syncing') : t('dashboard.syncAll')}
         </button>
       </div>
+
+      {unhealthyAccounts.length > 0 && (
+        <div className="alert alert-warning py-2.5 text-sm" role="status">
+          <div>
+            <div className="font-semibold">{t('dashboard.dataHealthWarning')}</div>
+            <div className="text-xs opacity-80 mt-0.5">
+              {unhealthyAccounts.map((health) => (
+                <span key={health.account_id} className="mr-3">
+                  {health.account_name}: {health.last_sync_status}
+                  {health.last_failed_page != null ? ` · ${t('dashboard.failedPage', { page: health.last_failed_page })}` : ''}
+                  {health.last_parse_error_count > 0 ? ` · ${t('dashboard.parseErrors', { count: health.last_parse_error_count })}` : ''}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {hero.map((h) => (

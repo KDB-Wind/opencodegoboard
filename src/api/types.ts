@@ -143,10 +143,30 @@ export interface UsageResponse {
     last_sync_at: string | null;
     last_sync_status: string | null;
     last_sync_error: string | null;
+    last_success_at: string | null;
+    last_failed_page: number | null;
+    last_parse_error_count: number;
     total_records: number;
     oldest_record_at: string | null;
     newest_record_at: string | null;
   };
+}
+
+export interface UsageDataHealth {
+  account_id: string;
+  account_name: string;
+  last_sync_at: string | null;
+  last_sync_status: string | null;
+  last_sync_error: string | null;
+  last_success_at: string | null;
+  last_failed_page: number | null;
+  last_parse_error_count: number;
+  last_inserted_count: number;
+  deepest_page_fetched: number;
+  total_records: number;
+  oldest_record_at: string | null;
+  newest_record_at: string | null;
+  healthy: boolean;
 }
 
 export interface ServiceConfig {
