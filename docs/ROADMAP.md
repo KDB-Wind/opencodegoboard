@@ -14,7 +14,7 @@
 - [x] Dashboard 的 OpenCode 配额只请求一次并复用于 overview。
 - [x] 完成 Tauri 最小壳构建并记录实际尺寸。
 - [x] 为配额 HTML、工作区解析和同步状态机补齐 Fixture/单元测试。
-- [ ] 建立数据库 schema version 和事务化迁移。
+- [x] 建立数据库 schema version 和事务化迁移。
 - [ ] 增加数据健康状态：覆盖范围、缺失页、解析失败、最后成功同步。
 
 ## P1：高价值基础体验

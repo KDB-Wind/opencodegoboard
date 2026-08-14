@@ -168,9 +168,19 @@ export function closeDb(): void {
   }
 }
 
-export function initDb(): void {
-  const conn = getDb();
-  conn.exec(`
+interface DbMigration {
+  version: number;
+  name: string;
+  up: (conn: Database.Database) => void;
+}
+
+export const CURRENT_SCHEMA_VERSION = 2;
+
+const MIGRATIONS: DbMigration[] = [
+  {
+    version: 1,
+    name: 'initial schema',
+    up: (conn) => conn.exec(`
     CREATE TABLE IF NOT EXISTS opencode_accounts (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -237,23 +247,66 @@ export function initDb(): void {
       payload TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
-  `);
+  `),
+  },
+  {
+    version: 2,
+    name: 'cache token columns and cost correction',
+    up: (conn) => {
+      const columns = new Set(
+        (conn.pragma('table_info(usage_records)') as Array<{ name: string }>).map(
+          (column) => column.name,
+        ),
+      );
+      for (const column of [
+        'cache_read_tokens',
+        'cache_write_5m_tokens',
+        'cache_write_1h_tokens',
+      ]) {
+        if (!columns.has(column)) {
+          conn.exec(
+            `ALTER TABLE usage_records ADD COLUMN ${column} INTEGER NOT NULL DEFAULT 0`,
+          );
+        }
+      }
 
-  const columns = new Set(
-    (conn.pragma('table_info(usage_records)') as Array<{ name: string }>).map((column) => column.name),
-  );
-  for (const column of ['cache_read_tokens', 'cache_write_5m_tokens', 'cache_write_1h_tokens']) {
-    if (!columns.has(column)) {
-      conn.exec(`ALTER TABLE usage_records ADD COLUMN ${column} INTEGER NOT NULL DEFAULT 0`);
-    }
+      // 旧版本把 1e-8 美元误按 1e-9 换算，按原始值校正。
+      conn.exec(`UPDATE usage_records
+     SET cost_usd = cost_raw / 100000000.0
+     WHERE ABS(cost_usd - cost_raw / 100000000.0) > 0.0000001`);
+    },
+  },
+];
+
+export function getSchemaVersion(conn: Database.Database = getDb()): number {
+  return Number(conn.pragma('user_version', { simple: true }) || 0);
+}
+
+export function initDb(): void {
+  const conn = getDb();
+  const installedVersion = getSchemaVersion(conn);
+  if (installedVersion > CURRENT_SCHEMA_VERSION) {
+    throw new Error(
+      `数据库版本 ${installedVersion} 高于应用支持的 ${CURRENT_SCHEMA_VERSION}，请升级应用`,
+    );
   }
 
-  // 存量数据迁移:cost 字段单位为 1e-8 美元,旧版本误除以 1e9(偏低 10 倍),按原始 cost_raw 重算
-  conn.exec(
-    `UPDATE usage_records
-     SET cost_usd = cost_raw / 100000000.0
-     WHERE ABS(cost_usd - cost_raw / 100000000.0) > 0.0000001`,
-  );
+  for (const migration of MIGRATIONS) {
+    if (migration.version <= installedVersion) continue;
+    const migrate = conn.transaction(() => {
+      migration.up(conn);
+      conn.pragma(`user_version = ${migration.version}`);
+    });
+    try {
+      migrate();
+    } catch (error) {
+      throw new Error(
+        `数据库迁移 v${migration.version} (${migration.name}) 失败: ${String(
+          error instanceof Error ? error.message : error,
+        )}`,
+      );
+    }
+  }
 }
 
 export function usageRecordToDict(r: UsageRecordRow): Record<string, unknown> {
