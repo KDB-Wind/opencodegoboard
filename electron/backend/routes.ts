@@ -16,6 +16,7 @@ import { resolveAccountWorkspaceId } from './opencode-usage';
 import { fetchAllQuotas, fetchQuotaForAccount, quotaAccountToDict } from './quota';
 import * as syncProgress from './sync-progress';
 import { backfillUsage, syncResultToDict, syncUsage } from './usage-sync';
+import { analyzeQuotaWindows } from './quota-intelligence';
 
 const OpenCodeAccountCreate = z.object({
   name: z.string(),
@@ -387,6 +388,13 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     }) });
   });
 
+  app.get('/api/quota/intelligence', (c) => c.json({
+    windows: analyzeQuotaWindows(db.listQuotaSnapshots({
+      account_id: c.req.query('account_id') || undefined,
+      limit: 5000,
+    })),
+  }));
+
   app.get('/api/dashboard', async (c) => {
     const period = c.req.query('period') || '30d';
     if (!/^(5h|today|all|\d+d)$/.test(period)) {
@@ -399,6 +407,7 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     const [usageRecords, usageTotal] = db.listAllUsageRecords({ offset: 0, limit: 10 });
     const modelTokens = db.opencodeModelTokenStats(period);
     const dataHealth = db.listUsageDataHealth();
+    const quotaIntelligence = analyzeQuotaWindows(db.listQuotaSnapshots({ limit: 5000 }));
     return c.json({
       overview,
       quota,
@@ -408,6 +417,7 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
       },
       model_tokens: modelTokens,
       data_health: dataHealth,
+      quota_intelligence: quotaIntelligence,
       period,
     });
   });

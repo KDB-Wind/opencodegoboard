@@ -81,6 +81,17 @@
     "dataHealthWarning": "Some local usage data may be incomplete",
     "failedPage": "page {{page}} failed",
     "parseErrors": "{{count}} parse failures"
+    ,"enduranceTitle": "Quota endurance"
+    ,"enduranceNoSnapshots": "Waiting for quota snapshots"
+    ,"enduranceInsufficient": "Not enough snapshots to predict"
+    ,"enduranceCanLast": "Expected to last until reset"
+    ,"enduranceCannotLast": "Expected to run out early"
+    ,"enduranceHours": "~{{exhaust}}h to exhaust · reset in {{reset}}h"
+    ,"enduranceConfidence": "{{level}} confidence · {{count}} valid intervals"
+    ,"confidence_high": "High"
+    ,"confidence_medium": "Medium"
+    ,"confidence_low": "Low"
+    ,"confidence_insufficient": "Insufficient"
   },
   "tokenStats": {
     "title": "Usage Stats",

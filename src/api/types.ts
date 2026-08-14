@@ -46,6 +46,21 @@ export interface QuotaSnapshot {
   reset_in_sec: number;
 }
 
+export interface QuotaIntelligence {
+  account_id: string;
+  account_name: string;
+  window_label: string;
+  captured_at: string;
+  reset_at: string;
+  remaining: number;
+  consumption_per_hour: number | null;
+  hours_to_exhaust: number | null;
+  hours_to_reset: number;
+  can_last_until_reset: boolean | null;
+  sample_count: number;
+  confidence: 'high' | 'medium' | 'low' | 'insufficient';
+}
+
 export interface Overview {
   opencode: {
     avg_effective_remaining: number;

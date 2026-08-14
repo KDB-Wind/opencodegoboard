@@ -81,6 +81,17 @@
     "dataHealthWarning": "部分本地统计数据可能不完整",
     "failedPage": "第 {{page}} 页失败",
     "parseErrors": "{{count}} 条解析失败"
+    ,"enduranceTitle": "额度续航预测"
+    ,"enduranceNoSnapshots": "等待采集额度快照"
+    ,"enduranceInsufficient": "快照不足，暂不预测"
+    ,"enduranceCanLast": "预计可撑到重置"
+    ,"enduranceCannotLast": "预计会提前耗尽"
+    ,"enduranceHours": "约 {{exhaust}} 小时耗尽 · {{reset}} 小时后重置"
+    ,"enduranceConfidence": "{{level}}置信度 · {{count}} 个有效区间"
+    ,"confidence_high": "高"
+    ,"confidence_medium": "中"
+    ,"confidence_low": "低"
+    ,"confidence_insufficient": "不足"
   },
   "tokenStats": {
     "title": "用量统计",

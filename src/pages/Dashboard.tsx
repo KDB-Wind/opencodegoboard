@@ -185,7 +185,7 @@ export function Dashboard() {
         try {
           const synced = await api.syncUsage(account.id);
           total += synced.inserted ?? 0;
-          const backfilled = await api.backfillUsage(account.id);
+          const backfilled = await api.backfillUsage(account.id, { mode: 'days', days: 90 });
           total += backfilled.inserted ?? 0;
         } catch (err) {
           toast(t('dashboard.syncFailed', { error: String(err instanceof Error ? err.message : err) }), 'error');
@@ -208,6 +208,7 @@ export function Dashboard() {
   const unhealthyAccounts = (data?.data_health ?? []).filter(
     (health) => !health.healthy && health.last_sync_status != null,
   );
+  const quotaIntelligence = data?.quota_intelligence ?? [];
   const tokenBreakdown = {
     uncachedInput: tokens.reduce((s, m) => s + Number(m.uncached_input_tokens ?? m.total_input_tokens ?? 0), 0),
     cacheHit: tokens.reduce((s, m) => s + Number(m.cache_hit_tokens ?? 0), 0),
@@ -310,6 +311,37 @@ export function Dashboard() {
             <div className="text-xs text-muted mt-0.5 truncate">{h.sub}</div>
           </div>
         ))}
+      </div>
+
+      <div className="border border-base-200 rounded-xl p-4">
+        <div className="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-3">{t('dashboard.enduranceTitle')}</div>
+        {quotaIntelligence.length === 0 ? (
+          <div className="text-sm text-muted py-3">{t('dashboard.enduranceNoSnapshots')}</div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-3">
+            {quotaIntelligence.slice(0, 3).map((window) => (
+              <div key={`${window.account_id}:${window.window_label}`} className="rounded-lg border border-base-200 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-sm truncate">{window.account_name}</span>
+                  <span className="badge badge-ghost badge-sm">{window.window_label}</span>
+                </div>
+                {window.hours_to_exhaust == null ? (
+                  <div className="text-sm text-muted mt-2">{t('dashboard.enduranceInsufficient')}</div>
+                ) : (
+                  <>
+                    <div className={`text-lg font-bold mt-2 ${window.can_last_until_reset ? 'text-success' : 'text-error'}`}>
+                      {window.can_last_until_reset ? t('dashboard.enduranceCanLast') : t('dashboard.enduranceCannotLast')}
+                    </div>
+                    <div className="text-xs text-muted mt-1">
+                      {t('dashboard.enduranceHours', { exhaust: window.hours_to_exhaust, reset: window.hours_to_reset })}
+                    </div>
+                  </>
+                )}
+                <div className="text-xs text-subtle mt-2">{t('dashboard.enduranceConfidence', { level: t(`dashboard.confidence_${window.confidence}`), count: window.sample_count })}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex gap-4">
