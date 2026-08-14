@@ -213,12 +213,19 @@ export function Dashboard() {
     cacheHit: tokens.reduce((s, m) => s + Number(m.cache_hit_tokens ?? 0), 0),
     cacheWrite: tokens.reduce((s, m) => s + Number(m.cache_write_tokens ?? 0), 0),
     output: tokens.reduce((s, m) => s + m.total_output_tokens, 0),
+    reasoning: tokens.reduce((s, m) => s + m.total_reasoning_tokens, 0),
   };
 
   const hero = useMemo(() => {
-    const tkn = tokens.reduce((s, m) => s + m.total_input_tokens + m.total_output_tokens, 0);
+    const tkn = tokens.reduce(
+      (s, m) => s + m.total_input_tokens + m.total_output_tokens + m.total_reasoning_tokens,
+      0,
+    );
     const r = tokens.reduce((s, m) => s + m.request_count, 0);
-    const today = todayTokens.reduce((s, m) => s + m.total_input_tokens + m.total_output_tokens, 0);
+    const today = todayTokens.reduce(
+      (s, m) => s + m.total_input_tokens + m.total_output_tokens + m.total_reasoning_tokens,
+      0,
+    );
     const totalCost = tokens.reduce((s, m) => s + m.total_cost_usd, 0);
     return [
       { label: t('dashboard.account'), value: overview?.account_count ?? '-', sub: t('dashboard.availableBlocked', { available: overview?.success_count ?? 0, blocked: overview?.blocked_count ?? 0 }), breakdown: null, size: 'sm' },

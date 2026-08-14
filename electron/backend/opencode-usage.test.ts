@@ -18,6 +18,8 @@ describe('parseUsageResponse', () => {
       input_tokens: 100,
       cache_read_tokens: 30,
       cache_write_1h_tokens: 0,
+      reasoning_tokens: 9,
+      session_id: 'ses_alpha',
       cost_usd: 0.00123456,
     });
     expect(records[1]).toMatchObject({
@@ -25,6 +27,8 @@ describe('parseUsageResponse', () => {
       model: 'deepseek-v4-pro',
       input_tokens: 200,
       cache_write_1h_tokens: 2,
+      reasoning_tokens: 15,
+      session_id: 'ses_beta',
       cost_usd: 0.0025,
     });
   });

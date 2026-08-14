@@ -59,6 +59,7 @@ export function TokenStats() {
 
   const totalInput = filteredStats.reduce((s, m) => s + m.total_input_tokens, 0);
   const totalOutput = filteredStats.reduce((s, m) => s + m.total_output_tokens, 0);
+  const totalReasoning = filteredStats.reduce((s, m) => s + m.total_reasoning_tokens, 0);
   const totalCost = filteredStats.reduce((s, m) => s + m.total_cost_usd, 0);
   const totalRequests = filteredStats.reduce((s, m) => s + m.request_count, 0);
   const uncachedInput = filteredStats.reduce((s, m) => s + Number(m.uncached_input_tokens ?? m.total_input_tokens ?? 0), 0);
@@ -113,15 +114,17 @@ export function TokenStats() {
           { label: t('tokenStats.totalRequests'), value: totalRequests.toLocaleString() },
           {
             label: t('common.totalTokens'),
-            value: formatTokens(totalInput + totalOutput),
+            value: formatTokens(totalInput + totalOutput + totalReasoning),
             breakdown: {
               uncachedInput,
               cacheHit,
               cacheWrite,
               output: totalOutput,
+              reasoning: totalReasoning,
             },
           },
           { label: t('dailyTrends.totalOutput'), value: formatTokens(totalOutput) },
+          { label: t('tokenStats.reasoning'), value: formatTokens(totalReasoning) },
           { label: t('dailyTrends.cacheTokens'), value: formatTokens(cacheHit) },
           { label: t('tokenStats.cacheHitRateLabel'), value: `${cacheHitRate}%` },
           { label: t('tokenStats.totalCost'), value: `$${totalCost.toFixed(4)}` },
@@ -158,6 +161,7 @@ export function TokenStats() {
                 <th className="text-right">{t('common.requests')}</th>
                 <th className="text-right">{t('common.input')}</th>
                 <th className="text-right">{t('common.output')}</th>
+                <th className="text-right">{t('tokenStats.reasoning')}</th>
                 <th className="text-right">{t('dailyTrends.cacheTokens')}</th>
                 <th className="text-right">{t('dailyTrends.cacheRate')}</th>
                 <th className="text-right">{t('common.totalTokens')}</th>
@@ -167,7 +171,7 @@ export function TokenStats() {
             <tbody>
               {filteredStats.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-base-content/40 text-sm">
+                  <td colSpan={9} className="text-center py-8 text-base-content/40 text-sm">
                     {t('common.noData')}
                   </td>
                 </tr>
@@ -183,6 +187,7 @@ export function TokenStats() {
                     <td className="text-right text-sm tabular-nums">{m.request_count.toLocaleString()}</td>
                     <td className="text-right text-sm tabular-nums">{formatTokens(m.total_input_tokens)}</td>
                     <td className="text-right text-sm tabular-nums">{formatTokens(m.total_output_tokens)}</td>
+                    <td className="text-right text-sm tabular-nums">{formatTokens(m.total_reasoning_tokens)}</td>
                     <td className="text-right text-sm tabular-nums">{formatTokens(m.cache_hit_tokens ?? 0)}</td>
                     <td className="text-right text-sm tabular-nums">
                       {m.uncached_input_tokens + (m.cache_hit_tokens ?? 0) + (m.cache_write_tokens ?? 0) > 0
@@ -190,7 +195,7 @@ export function TokenStats() {
                         : '0.0%'}
                     </td>
                     <td className="text-right text-sm tabular-nums">
-                      {formatTokens(m.total_input_tokens + m.total_output_tokens)}
+                      {formatTokens(m.total_input_tokens + m.total_output_tokens + m.total_reasoning_tokens)}
                     </td>
                     <td className="text-right text-sm tabular-nums">${m.total_cost_usd.toFixed(4)}</td>
                   </tr>

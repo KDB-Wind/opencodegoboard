@@ -25,6 +25,7 @@ function CacheBreakdown({ record, rect }: { record: UsageRecord; rect: DOMRect }
   const cacheWrite = record.cache_write_tokens ?? 0;
   const totalInput = record.input_tokens ?? uncached + cacheHit + cacheWrite;
   const output = record.output_tokens ?? 0;
+  const reasoning = record.reasoning_tokens ?? 0;
   const hitRate = totalInput > 0 ? ((cacheHit / totalInput) * 100).toFixed(1) : '0.0';
   const format = (v: number) => v.toLocaleString();
 
@@ -53,6 +54,10 @@ function CacheBreakdown({ record, rect }: { record: UsageRecord; rect: DOMRect }
       <div className="flex justify-between gap-4 py-0.5">
         <span className="text-base-content/60">{t('tokenStats.output')}</span>
         <span className="tabular-nums">{format(output)}</span>
+      </div>
+      <div className="flex justify-between gap-4 py-0.5">
+        <span className="text-base-content/60">{t('tokenStats.reasoning')}</span>
+        <span className="tabular-nums">{format(reasoning)}</span>
       </div>
       <div className="text-base-content/40 mt-1">{t('tokenStats.cacheHitRate', { rate: hitRate })}</div>
     </div>,
@@ -87,6 +92,7 @@ export function UsageTable({ records, showAccount }: UsageTableProps) {
                 <th>{t('common.model')}</th>
                 <th className="text-right">{t('common.input')}</th>
                 <th className="text-right">{t('common.output')}</th>
+                <th className="text-right">{t('tokenStats.reasoning')}</th>
             <th className="text-right">{t('common.cost')}</th>
             <th>{t('common.plan')}</th>
           </tr>
@@ -94,7 +100,7 @@ export function UsageTable({ records, showAccount }: UsageTableProps) {
         <tbody>
           {records.length === 0 ? (
             <tr>
-              <td colSpan={showAccount ? 7 : 6} className="text-center py-8 text-base-content/40 text-sm">
+              <td colSpan={showAccount ? 8 : 7} className="text-center py-8 text-base-content/40 text-sm">
                 {t('common.noUsageRecords')}
               </td>
             </tr>
@@ -121,6 +127,7 @@ export function UsageTable({ records, showAccount }: UsageTableProps) {
                   {r.input_tokens.toLocaleString()}
                 </td>
                 <td className="text-right text-sm tabular-nums">{r.output_tokens.toLocaleString()}</td>
+                <td className="text-right text-sm tabular-nums">{r.reasoning_tokens.toLocaleString()}</td>
                 <td className="text-right text-sm tabular-nums">${r.cost_usd.toFixed(6)}</td>
                 <td className="text-xs">
                   {r.plan && <span className="badge badge-ghost badge-xs">{displayPlan(r.plan)}</span>}

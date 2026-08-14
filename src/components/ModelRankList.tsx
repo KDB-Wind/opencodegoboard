@@ -20,10 +20,14 @@ export function ModelRankList({ data }: ModelRankListProps) {
   const ranked = [...data].sort(
     (a, b) =>
       b.total_input_tokens +
-      b.total_output_tokens -
-      (a.total_input_tokens + a.total_output_tokens),
+      b.total_output_tokens +
+      b.total_reasoning_tokens -
+      (a.total_input_tokens + a.total_output_tokens + a.total_reasoning_tokens),
   );
-  const grandTotal = ranked.reduce((s, m) => s + m.total_input_tokens + m.total_output_tokens, 0);
+  const grandTotal = ranked.reduce(
+    (s, m) => s + m.total_input_tokens + m.total_output_tokens + m.total_reasoning_tokens,
+    0,
+  );
 
   if (ranked.length === 0) {
     return (
@@ -38,7 +42,8 @@ export function ModelRankList({ data }: ModelRankListProps) {
       {ranked.map((m, i) => {
         const input = m.total_input_tokens;
         const output = m.total_output_tokens;
-        const total = input + output;
+        const reasoning = m.total_reasoning_tokens;
+        const total = input + output + reasoning;
         const pct = grandTotal > 0 ? (total / grandTotal) * 100 : 0;
         const barWidth = Math.max(pct, 2);
         return (
@@ -63,7 +68,7 @@ export function ModelRankList({ data }: ModelRankListProps) {
                 <span className="text-sm font-semibold truncate">{m.model}</span>
                 <span className="text-xs text-base-content/60 tabular-nums whitespace-nowrap">
                   {t('common.input')} {formatTokens(input)} · {t('common.output')}{' '}
-                  {formatTokens(output)}
+                  {formatTokens(output)} · {t('tokenStats.reasoning')} {formatTokens(reasoning)}
                 </span>
               </div>
               <div className="mt-1.5 h-1.5 bg-base-200 rounded-full overflow-hidden">

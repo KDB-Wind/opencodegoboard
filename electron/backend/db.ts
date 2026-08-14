@@ -39,12 +39,14 @@ export interface UsageRecordRow {
   provider: string | null;
   input_tokens: number;
   output_tokens: number;
+  reasoning_tokens: number;
   cache_read_tokens: number;
   cache_write_5m_tokens: number;
   cache_write_1h_tokens: number;
   cost_raw: number;
   cost_usd: number;
   key_id: string | null;
+  session_id: string | null;
   plan: string | null;
   synced_at: string;
 }
@@ -144,12 +146,14 @@ function mapUsage(row: Record<string, unknown>): UsageRecordRow {
     provider: row.provider != null ? String(row.provider) : null,
     input_tokens: Number(row.input_tokens),
     output_tokens: Number(row.output_tokens),
+    reasoning_tokens: Number(row.reasoning_tokens || 0),
     cache_read_tokens: Number(row.cache_read_tokens || 0),
     cache_write_5m_tokens: Number(row.cache_write_5m_tokens || 0),
     cache_write_1h_tokens: Number(row.cache_write_1h_tokens || 0),
     cost_raw: Number(row.cost_raw),
     cost_usd: Number(row.cost_usd),
     key_id: row.key_id != null ? String(row.key_id) : null,
+    session_id: row.session_id != null ? String(row.session_id) : null,
     plan: row.plan != null ? String(row.plan) : null,
     synced_at: String(row.synced_at),
   };
@@ -177,7 +181,7 @@ interface DbMigration {
   up: (conn: Database.Database) => void;
 }
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 const MIGRATIONS: DbMigration[] = [
   {
@@ -304,6 +308,27 @@ const MIGRATIONS: DbMigration[] = [
         WHERE last_success_at IS NULL AND last_sync_status = 'ok'`);
     },
   },
+  {
+    version: 4,
+    name: 'reasoning tokens and session attribution',
+    up: (conn) => {
+      const columns = new Set(
+        (conn.pragma('table_info(usage_records)') as Array<{ name: string }>).map(
+          (column) => column.name,
+        ),
+      );
+      if (!columns.has('reasoning_tokens')) {
+        conn.exec(
+          'ALTER TABLE usage_records ADD COLUMN reasoning_tokens INTEGER NOT NULL DEFAULT 0',
+        );
+      }
+      if (!columns.has('session_id')) {
+        conn.exec('ALTER TABLE usage_records ADD COLUMN session_id TEXT');
+      }
+      conn.exec(`CREATE INDEX IF NOT EXISTS idx_usage_session_time
+        ON usage_records(account_id, session_id, created_at DESC)`);
+    },
+  },
 ];
 
 export function getSchemaVersion(conn: Database.Database = getDb()): number {
@@ -347,11 +372,13 @@ export function usageRecordToDict(r: UsageRecordRow): Record<string, unknown> {
     provider: r.provider,
     input_tokens: r.input_tokens + r.cache_read_tokens + cacheWriteTokens,
     output_tokens: r.output_tokens,
+    reasoning_tokens: r.reasoning_tokens,
     uncached_input_tokens: r.input_tokens,
     cache_read_tokens: r.cache_read_tokens,
     cache_write_tokens: cacheWriteTokens,
     cost_usd: r.cost_usd,
     key_id: r.key_id,
+    session_id: r.session_id,
     plan: r.plan,
   };
 }
@@ -563,17 +590,19 @@ export function insertUsageRecordsIgnore(
   const stmt = getDb().prepare(
     `INSERT INTO usage_records (
       usg_id, account_id, workspace_id, created_at, model, provider,
-      input_tokens, output_tokens, cache_read_tokens, cache_write_5m_tokens,
-      cache_write_1h_tokens, cost_raw, cost_usd, key_id, plan, synced_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      input_tokens, output_tokens, reasoning_tokens, cache_read_tokens, cache_write_5m_tokens,
+      cache_write_1h_tokens, cost_raw, cost_usd, key_id, session_id, plan, synced_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(usg_id) DO UPDATE SET
       input_tokens = excluded.input_tokens,
       output_tokens = excluded.output_tokens,
+      reasoning_tokens = excluded.reasoning_tokens,
       cache_read_tokens = excluded.cache_read_tokens,
       cache_write_5m_tokens = excluded.cache_write_5m_tokens,
       cache_write_1h_tokens = excluded.cache_write_1h_tokens,
       cost_raw = excluded.cost_raw,
       cost_usd = excluded.cost_usd,
+      session_id = excluded.session_id,
       synced_at = excluded.synced_at`,
   );
   const existingStmt = getDb().prepare('SELECT 1 FROM usage_records WHERE usg_id = ?');
@@ -594,12 +623,14 @@ export function insertUsageRecordsIgnore(
         rec.provider ?? null,
         num(rec.input_tokens),
         num(rec.output_tokens),
+        num(rec.reasoning_tokens),
         num(rec.cache_read_tokens),
         num(rec.cache_write_5m_tokens),
         num(rec.cache_write_1h_tokens),
         num(rec.cost_raw),
         num(rec.cost_usd),
         rec.key_id ?? null,
+        rec.session_id ?? null,
         rec.plan ?? null,
         syncedAt,
       );
@@ -710,7 +741,8 @@ export function opencodeDailyStats(days = 30, accountId?: string | null): Record
                SUM(input_tokens) AS uncached_input_tokens,
                SUM(cache_read_tokens) AS cache_hit_tokens,
                SUM(cache_write_5m_tokens + cache_write_1h_tokens) AS cache_write_tokens,
-               SUM(output_tokens) AS total_output_tokens
+               SUM(output_tokens) AS total_output_tokens,
+               SUM(reasoning_tokens) AS total_reasoning_tokens
        FROM usage_records
        ${where}
        GROUP BY substr(datetime(created_at, 'localtime'), 1, 10)
@@ -726,6 +758,7 @@ export function opencodeDailyStats(days = 30, accountId?: string | null): Record
      cache_hit_tokens: Number(r.cache_hit_tokens || 0),
      cache_write_tokens: Number(r.cache_write_tokens || 0),
      total_output_tokens: Number(r.total_output_tokens || 0),
+     total_reasoning_tokens: Number(r.total_reasoning_tokens || 0),
   }));
 }
 
@@ -750,7 +783,8 @@ export function opencodeDailyModelStats(
               SUM(input_tokens) AS uncached_input_tokens,
               SUM(cache_read_tokens) AS cache_hit_tokens,
               SUM(cache_write_5m_tokens + cache_write_1h_tokens) AS cache_write_tokens,
-              SUM(output_tokens) AS total_output_tokens
+              SUM(output_tokens) AS total_output_tokens,
+              SUM(reasoning_tokens) AS total_reasoning_tokens
        FROM usage_records
        ${where}
        GROUP BY substr(datetime(created_at, 'localtime'), 1, 10), model
@@ -767,6 +801,7 @@ export function opencodeDailyModelStats(
     cache_hit_tokens: Number(r.cache_hit_tokens || 0),
     cache_write_tokens: Number(r.cache_write_tokens || 0),
     total_output_tokens: Number(r.total_output_tokens || 0),
+    total_reasoning_tokens: Number(r.total_reasoning_tokens || 0),
   }));
 }
 
@@ -932,6 +967,7 @@ export function opencodeModelTokenStats(
               SUM(cache_read_tokens) AS cache_hit_tokens,
               SUM(cache_write_5m_tokens + cache_write_1h_tokens) AS cache_write_tokens,
               SUM(output_tokens) AS total_output_tokens,
+              SUM(reasoning_tokens) AS total_reasoning_tokens,
               SUM(cost_usd) AS total_cost_usd
        FROM usage_records
        ${where}
@@ -947,6 +983,7 @@ export function opencodeModelTokenStats(
     cache_hit_tokens: Number(r.cache_hit_tokens || 0),
     cache_write_tokens: Number(r.cache_write_tokens || 0),
     total_output_tokens: Number(r.total_output_tokens || 0),
+    total_reasoning_tokens: Number(r.total_reasoning_tokens || 0),
     total_cost_usd: Math.round(Number(r.total_cost_usd || 0) * 1e6) / 1e6,
   }));
 }

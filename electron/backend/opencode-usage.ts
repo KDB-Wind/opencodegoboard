@@ -20,12 +20,14 @@ export interface ParsedUsageRecord {
   provider: string;
   input_tokens: number;
   output_tokens: number;
+  reasoning_tokens: number;
   cache_read_tokens: number;
   cache_write_5m_tokens: number;
   cache_write_1h_tokens: number;
   cost_raw: number;
   cost_usd: number;
   key_id: string;
+  session_id: string;
   plan: string | null;
 }
 
@@ -53,12 +55,14 @@ export function toDbDict(r: ParsedUsageRecord): Record<string, unknown> {
     provider: r.provider,
     input_tokens: r.input_tokens,
     output_tokens: r.output_tokens,
+    reasoning_tokens: r.reasoning_tokens,
     cache_read_tokens: r.cache_read_tokens,
     cache_write_5m_tokens: r.cache_write_5m_tokens,
     cache_write_1h_tokens: r.cache_write_1h_tokens,
     cost_raw: r.cost_raw,
     cost_usd: r.cost_usd,
     key_id: r.key_id,
+    session_id: r.session_id,
     plan: r.plan,
   };
 }
@@ -96,12 +100,14 @@ export function parseUsageResponseDetailed(text: string): UsageParseResult {
       provider: readString('provider'),
       input_tokens: parseOptionalToken(readNumber('inputTokens')),
       output_tokens: parseOptionalToken(readNumber('outputTokens')),
+      reasoning_tokens: parseOptionalToken(readNumber('reasoningTokens')),
       cache_read_tokens: parseOptionalToken(readNumber('cacheReadTokens')),
       cache_write_5m_tokens: parseOptionalToken(readNumber('cacheWrite5mTokens')),
       cache_write_1h_tokens: parseOptionalToken(readNumber('cacheWrite1hTokens')),
       cost_raw: costInt,
       cost_usd: costInt / 100_000_000,
       key_id: readString('keyID'),
+      session_id: readString('sessionID'),
       plan: plans.get(usgId) ?? null,
     });
   }

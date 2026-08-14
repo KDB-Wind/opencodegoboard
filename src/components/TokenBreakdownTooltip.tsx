@@ -7,6 +7,7 @@ interface TokenBreakdownTooltipProps {
   cacheHit: number;
   cacheWrite: number;
   output: number;
+  reasoning: number;
 }
 
 export function TokenBreakdownTooltip({
@@ -15,6 +16,7 @@ export function TokenBreakdownTooltip({
   cacheHit,
   cacheWrite,
   output,
+  reasoning,
 }: TokenBreakdownTooltipProps) {
   const { t } = useTranslation();
   const totalInput = uncachedInput + cacheHit + cacheWrite;
@@ -45,6 +47,10 @@ export function TokenBreakdownTooltip({
         <div className="flex justify-between gap-4 py-0.5">
           <span className="text-base-content/60">{t('tokenStats.output')}</span>
           <span className="tabular-nums">{format(output)}</span>
+        </div>
+        <div className="flex justify-between gap-4 py-0.5">
+          <span className="text-base-content/60">{t('tokenStats.reasoning')}</span>
+          <span className="tabular-nums">{format(reasoning)}</span>
         </div>
         <div className="text-base-content/40 mt-1">{t('tokenStats.cacheHitRate', { rate: hitRate })}</div>
       </div>
