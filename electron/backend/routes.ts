@@ -366,9 +366,16 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
   app.post('/api/accounts/opencode/:accountId/usage/backfill', async (c) => {
     const row = db.getOpencodeAccount(c.req.param('accountId'));
     if (!row) return c.json({ detail: '账号不存在' }, 404);
-    const pages = Math.max(1, Math.min(Number(c.req.query('pages') || 100), 1000));
+    const mode = c.req.query('mode') === 'days' || c.req.query('mode') === 'until'
+      ? c.req.query('mode') as 'days' | 'until'
+      : 'all';
+    const days = Math.max(1, Math.min(Number(c.req.query('days') || 30), 3650));
+    const until = c.req.query('until');
+    if (mode === 'until' && !/^\d{4}-\d{2}-\d{2}$/.test(until || '')) {
+      return c.json({ detail: 'until must use YYYY-MM-DD' }, 400);
+    }
     try {
-      const result = await backfillUsage(row, pages);
+      const result = await backfillUsage(row, 1000, { mode, days, until });
       return c.json(syncResultToDict(result));
     } catch (exc) {
       return c.json({ detail: String(exc instanceof Error ? exc.message : exc) }, 502);

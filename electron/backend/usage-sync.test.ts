@@ -55,8 +55,8 @@ const account = {
   updated_at: '2026-08-14T00:00:00Z',
 };
 
-function fullPage(page: number) {
-  return Array.from({ length: 50 }, (_, index) => ({ usg_id: `usg_${page}_${index}` }));
+function fullPage(page: number, createdAt = '2026-08-14T00:00:00Z') {
+  return Array.from({ length: 50 }, (_, index) => ({ usg_id: `usg_${page}_${index}`, created_at: createdAt }));
 }
 
 describe('backfillUsage failure boundaries', () => {
@@ -115,6 +115,18 @@ describe('backfillUsage failure boundaries', () => {
       inserted: 3,
     });
 
+    expect(mocks.insertUsageRecordsIgnore).toHaveBeenCalledTimes(3);
+    expect(mocks.updateUsageSyncState).toHaveBeenCalledWith(account.id, {
+      deepest_page_fetched: 2,
+    });
+  });
+
+  it('stops writing later pages once the requested date is reached', async () => {
+    mocks.fetchUsagePage.mockImplementation(async ({ page }: { page: number }) =>
+      fullPage(page, `2026-08-${String(15 - page).padStart(2, '0')}T00:00:00Z`));
+
+    await expect(backfillUsage(account, 10, { mode: 'until', until: '2026-08-13' }))
+      .resolves.toMatchObject({ pages_fetched: 3, inserted: 3 });
     expect(mocks.insertUsageRecordsIgnore).toHaveBeenCalledTimes(3);
     expect(mocks.updateUsageSyncState).toHaveBeenCalledWith(account.id, {
       deepest_page_fetched: 2,

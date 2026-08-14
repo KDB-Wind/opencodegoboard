@@ -150,10 +150,15 @@ export const api = {
     post<{ inserted: number; pages_fetched: number; sync_at: string }>(
       `/accounts/opencode/${id}/usage/sync`,
     ),
-  backfillUsage: (id: string, pages?: number) =>
+  backfillUsage: (id: string, target: { mode: 'days' | 'until' | 'all'; days?: number; until?: string }) => {
+    const query = new URLSearchParams({ mode: target.mode });
+    if (target.days) query.set('days', String(target.days));
+    if (target.until) query.set('until', target.until);
+    return (
     post<{ inserted: number; pages_fetched: number; sync_at: string }>(
-      `/accounts/opencode/${id}/usage/backfill${pages ? `?pages=${pages}` : ''}`,
-    ),
+      `/accounts/opencode/${id}/usage/backfill?${query}`,
+    ));
+  },
   syncProgress: (id: string) =>
     get<{ status: string; current: number; total: number; inserted: number; error?: string }>(
       `/accounts/opencode/${id}/usage/progress`,

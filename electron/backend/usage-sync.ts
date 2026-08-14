@@ -33,6 +33,12 @@ export interface SyncResult {
   error?: string;
 }
 
+export interface BackfillTarget {
+  mode: 'days' | 'until' | 'all';
+  days?: number;
+  until?: string;
+}
+
 export function syncResultToDict(r: SyncResult): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     inserted: r.inserted,
@@ -64,11 +70,13 @@ async function fetchAndInsertBatch(
   workspaceId: string,
   pages: number[],
   insertedTotal: number,
+  cutoff?: string | null,
 ): Promise<{
   inserted: number;
   pagesFetched: number;
   lastCompletedPage: number | null;
   exhausted: boolean;
+  oldestRecordAt: string | null;
 }> {
   const results = await Promise.all(
     pages.map((p) =>
@@ -106,6 +114,7 @@ async function fetchAndInsertBatch(
         pagesFetched: pagesDone,
         lastCompletedPage,
         exhausted: true,
+        oldestRecordAt: null,
       };
     }
     pagesDone += 1;
@@ -118,12 +127,25 @@ async function fetchAndInsertBatch(
     newInserted += newInPage;
     total += newInPage;
     syncProgress.update(account.id, p + 1, total);
+    const pageOldest = records.reduce<string | null>((oldest, record) =>
+      oldest == null || record.created_at < oldest ? record.created_at : oldest, null);
+    if (cutoff && pageOldest && pageOldest <= cutoff) {
+      return {
+        inserted: newInserted,
+        pagesFetched: pagesDone,
+        lastCompletedPage,
+        exhausted: false,
+        oldestRecordAt: pageOldest,
+      };
+    }
     if (records.length < USAGE_PAGE_SIZE) {
       return {
         inserted: newInserted,
         pagesFetched: pagesDone,
         lastCompletedPage,
         exhausted: true,
+        oldestRecordAt: records.reduce<string | null>((oldest, record) =>
+          oldest == null || record.created_at < oldest ? record.created_at : oldest, null),
       };
     }
   }
@@ -133,6 +155,9 @@ async function fetchAndInsertBatch(
     pagesFetched: pagesDone,
     lastCompletedPage,
     exhausted: false,
+    oldestRecordAt: results.flatMap((result) => result as ParsedUsageRecord[])
+      .reduce<string | null>((oldest, record) =>
+        oldest == null || record.created_at < oldest ? record.created_at : oldest, null),
   };
 }
 
@@ -227,6 +252,7 @@ export async function syncUsage(
 export async function backfillUsage(
   account: OpenCodeAccountRow,
   maxPages?: number | null,
+  target: BackfillTarget = { mode: 'all' },
 ): Promise<SyncResult> {
   const cfg = loadServiceConfig().usage_sync;
   let pagesLimit = maxPages != null ? maxPages : cfg.backfill_pages_per_request;
@@ -240,6 +266,11 @@ export async function backfillUsage(
     const state = db.getUsageSyncState(account.id);
     const startPage = state.deepest_page_fetched >= 0 ? state.deepest_page_fetched + 1 : 0;
     let page = startPage;
+    const cutoff = target.mode === 'days'
+      ? new Date(Date.now() - Math.max(1, target.days ?? 30) * 86400000).toISOString()
+      : target.mode === 'until' && target.until
+        ? new Date(`${target.until}T23:59:59.999`).toISOString()
+        : null;
 
     syncProgress.start(account.id, pagesLimit);
 
@@ -253,6 +284,7 @@ export async function backfillUsage(
         workspaceId,
         batchPages,
         insertedTotal,
+        cutoff,
       );
       insertedTotal += batch.inserted;
       pagesFetched += batch.pagesFetched;
@@ -262,7 +294,8 @@ export async function backfillUsage(
         });
         page = batch.lastCompletedPage + 1;
       }
-      if (batch.exhausted || batch.lastCompletedPage == null) break;
+      const reachedTarget = cutoff != null && batch.oldestRecordAt != null && batch.oldestRecordAt <= cutoff;
+      if (batch.exhausted || batch.lastCompletedPage == null || reachedTarget) break;
     }
 
     db.refreshUsageSyncTotals(account.id);

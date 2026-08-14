@@ -93,14 +93,15 @@ export function Settings() {
   const syncTimerRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
   const [autoSync, setAutoSync] = useState(true);
   const [syncInterval, setSyncInterval] = useState(300);
-  const [backfillPages, setBackfillPages] = useState(100);
+  const [backfillMode, setBackfillMode] = useState<'days' | 'until' | 'all'>('days');
+  const [backfillDays, setBackfillDays] = useState(90);
+  const [backfillUntil, setBackfillUntil] = useState('');
   const syncConfigLoadedRef = useRef(false);
   useEffect(() => {
     if (config?.usage_sync && !syncConfigLoadedRef.current) {
       syncConfigLoadedRef.current = true;
       setAutoSync(config.usage_sync.auto_sync ?? true);
       setSyncInterval(config.usage_sync.interval_sec ?? 300);
-      setBackfillPages(config.usage_sync.backfill_pages_per_request ?? 100);
     }
   }, [config]);
   const [trayMode, setTrayMode] = useState(false);
@@ -250,11 +251,15 @@ export function Settings() {
 
   const doSync = async (id: string, mode: 'sync' | 'backfill') => {
     setSyncing(id);
-    setSyncProg((prev) => ({ ...prev, [id]: { status: 'running', current: 0, total: mode === 'backfill' ? backfillPages : 0, inserted: 0 } }));
+    setSyncProg((prev) => ({ ...prev, [id]: { status: 'running', current: 0, total: 0, inserted: 0 } }));
     startPollProgress(id);
     try {
       if (mode === 'backfill') {
-        await api.backfillUsage(id, backfillPages);
+        await api.backfillUsage(id, {
+          mode: backfillMode,
+          days: backfillMode === 'days' ? backfillDays : undefined,
+          until: backfillMode === 'until' ? backfillUntil : undefined,
+        });
       } else {
         await api.syncUsage(id);
       }
@@ -318,20 +323,6 @@ export function Settings() {
         },
       });
       toast(t('settings.toastSyncSaved'), 'success');
-      refetch();
-    } catch (e) {
-      toast(t('settings.toastSyncSaveFailed', { msg: (e as Error).message }), 'error');
-    }
-  };
-
-  const saveBackfillSettings = async () => {
-    try {
-      await api.updateConfig({
-        usage_sync: {
-          backfill_pages_per_request: backfillPages,
-        },
-      });
-      toast(t('settings.toastBackfillSaved'), 'success');
       refetch();
     } catch (e) {
       toast(t('settings.toastSyncSaveFailed', { msg: (e as Error).message }), 'error');
@@ -559,24 +550,21 @@ export function Settings() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-base-content/70">{t('settings.backfillPages')}</div>
-              <div className="text-[11px] text-base-content/40 mt-0.5">{t('settings.backfillDesc')}</div>
+              <div className="text-sm text-base-content/70">{t('settings.backfillTarget')}</div>
+              <div className="text-xs text-muted mt-0.5">{t('settings.backfillTargetDesc')}</div>
             </div>
             <select
-              className="select select-bordered select-sm w-32"
-              value={backfillPages}
-              onChange={(e) => setBackfillPages(Number(e.target.value))}
+              className="select select-bordered select-sm w-40"
+              value={backfillMode}
+              onChange={(e) => setBackfillMode(e.target.value as 'days' | 'until' | 'all')}
             >
-              <option value={100}>{t('settings.pages100')}</option>
-              <option value={200}>{t('settings.pages200')}</option>
-              <option value={500}>{t('settings.pages500')}</option>
-              <option value={1000}>{t('settings.pages1000')}</option>
+              <option value="days">{t('settings.backfillRecentDays')}</option>
+              <option value="until">{t('settings.backfillUntil')}</option>
+              <option value="all">{t('settings.backfillAll')}</option>
             </select>
           </div>
-
-          <button className="btn btn-primary btn-sm" onClick={saveBackfillSettings}>
-            {t('settings.saveBackfillSettings')}
-          </button>
+          {backfillMode === 'days' && <input className="input input-bordered input-sm w-40 ml-auto block" type="number" min={1} max={3650} value={backfillDays} onChange={(e) => setBackfillDays(Math.max(1, Number(e.target.value)))} />}
+          {backfillMode === 'until' && <input className="input input-bordered input-sm w-40 ml-auto block" type="date" value={backfillUntil} onChange={(e) => setBackfillUntil(e.target.value)} />}
         </div>
       </div>
 
