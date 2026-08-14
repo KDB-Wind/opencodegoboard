@@ -92,6 +92,12 @@
     ,"confidence_medium": "Medium"
     ,"confidence_low": "Low"
     ,"confidence_insufficient": "Insufficient"
+    ,"safeBudget": "Safe budget {{budget}} quota units/day ({{reserve}}% reserve)"
+    ,"accelerationWarning": "Recent burn rate is {{ratio}}× the baseline"
+    ,"alert_safe": "Safe"
+    ,"alert_warning": "Watch"
+    ,"alert_critical": "Critical"
+    ,"alert_unknown": "Sampling"
   },
   "tokenStats": {
     "title": "Usage Stats",

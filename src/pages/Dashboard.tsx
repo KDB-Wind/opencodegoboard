@@ -323,7 +323,10 @@ export function Dashboard() {
               <div key={`${window.account_id}:${window.window_label}`} className="rounded-lg border border-base-200 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-semibold text-sm truncate">{window.account_name}</span>
-                  <span className="badge badge-ghost badge-sm">{window.window_label}</span>
+                  <div className="flex items-center gap-1">
+                    <span className={`badge badge-sm ${window.alert_level === 'critical' ? 'badge-error' : window.alert_level === 'warning' ? 'badge-warning' : 'badge-ghost'}`}>{t(`dashboard.alert_${window.alert_level}`)}</span>
+                    <span className="badge badge-ghost badge-sm">{window.window_label}</span>
+                  </div>
                 </div>
                 {window.hours_to_exhaust == null ? (
                   <div className="text-sm text-muted mt-2">{t('dashboard.enduranceInsufficient')}</div>
@@ -338,6 +341,10 @@ export function Dashboard() {
                   </>
                 )}
                 <div className="text-xs text-subtle mt-2">{t('dashboard.enduranceConfidence', { level: t(`dashboard.confidence_${window.confidence}`), count: window.sample_count })}</div>
+                <div className="text-xs text-muted mt-1">{t('dashboard.safeBudget', { budget: window.safe_budget_per_day, reserve: window.reserve_percent })}</div>
+                {window.acceleration_ratio != null && window.acceleration_ratio >= 1.5 && (
+                  <div className="text-xs text-warning mt-1" role="status">{t('dashboard.accelerationWarning', { ratio: window.acceleration_ratio })}</div>
+                )}
               </div>
             ))}
           </div>

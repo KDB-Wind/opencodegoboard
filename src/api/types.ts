@@ -59,6 +59,11 @@ export interface QuotaIntelligence {
   can_last_until_reset: boolean | null;
   sample_count: number;
   confidence: 'high' | 'medium' | 'low' | 'insufficient';
+  reserve_percent: number;
+  safe_budget_per_day: number;
+  projected_remaining_at_reset: number | null;
+  acceleration_ratio: number | null;
+  alert_level: 'safe' | 'warning' | 'critical' | 'unknown';
 }
 
 export interface Overview {

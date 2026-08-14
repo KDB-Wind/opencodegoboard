@@ -51,6 +51,18 @@ export function analyzeQuotaWindows(
     const resetHours = Math.max(0, (Date.parse(latest.reset_at) - now.getTime()) / 3600000);
     const hoursToExhaust = rate > 0 ? latest.remaining / rate : null;
     const confidence = rates.length >= 6 ? 'high' : rates.length >= 3 ? 'medium' : rates.length ? 'low' : 'insufficient';
+    const split = Math.floor(rates.length / 2);
+    const baselineRate = split >= 2 ? median(rates.slice(0, split)) : null;
+    const recentRate = split >= 2 ? median(rates.slice(split)) : null;
+    const acceleration = baselineRate && recentRate ? recentRate / baselineRate : null;
+    const reserve = 10;
+    const safeBudgetPerDay = resetHours > 0 ? Math.max(0, latest.remaining - reserve) / (resetHours / 24) : 0;
+    const canLast = hoursToExhaust == null ? null : hoursToExhaust >= resetHours;
+    const alertLevel = canLast === false
+      ? 'critical'
+      : latest.remaining <= reserve || (acceleration != null && acceleration >= 1.5)
+        ? 'warning'
+        : canLast == null ? 'unknown' : 'safe';
     return {
       account_id: latest.account_id, account_name: latest.account_name,
       window_label: latest.window_label, captured_at: latest.captured_at,
@@ -58,8 +70,13 @@ export function analyzeQuotaWindows(
       consumption_per_hour: rates.length ? round(rate, 4) : null,
       hours_to_exhaust: hoursToExhaust == null ? null : round(hoursToExhaust, 1),
       hours_to_reset: round(resetHours, 1),
-      can_last_until_reset: hoursToExhaust == null ? null : hoursToExhaust >= resetHours,
+      can_last_until_reset: canLast,
       sample_count: rates.length, confidence,
+      reserve_percent: reserve,
+      safe_budget_per_day: round(safeBudgetPerDay, 2),
+      projected_remaining_at_reset: rate > 0 ? round(latest.remaining - rate * resetHours, 2) : null,
+      acceleration_ratio: acceleration == null ? null : round(acceleration, 2),
+      alert_level: alertLevel,
     };
   }).sort((a, b) => Number(a.hours_to_exhaust ?? Infinity) - Number(b.hours_to_exhaust ?? Infinity));
 }

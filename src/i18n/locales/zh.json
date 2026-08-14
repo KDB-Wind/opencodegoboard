@@ -92,6 +92,12 @@
     ,"confidence_medium": "中"
     ,"confidence_low": "低"
     ,"confidence_insufficient": "不足"
+    ,"safeBudget": "安全预算 {{budget}} 额度单位/天（预留 {{reserve}}%）"
+    ,"accelerationWarning": "近期消耗速度升至基线的 {{ratio}} 倍"
+    ,"alert_safe": "安全"
+    ,"alert_warning": "关注"
+    ,"alert_critical": "紧急"
+    ,"alert_unknown": "待采样"
   },
   "tokenStats": {
     "title": "用量统计",

@@ -29,4 +29,13 @@ describe('quota endurance prediction', () => {
       can_last_until_reset: null, sample_count: 0, confidence: 'insufficient',
     });
   });
+
+  it('flags accelerated consumption and calculates a reserve-aware daily budget', () => {
+    const snapshots = [0, 1, 2, 4, 8].map((used, index) => ({
+      ...base, used, remaining: 100 - used,
+      captured_at: `2026-08-15T0${index}:00:00Z`, reset_at: '2026-08-19T04:00:00Z',
+    }));
+    const result = analyzeQuotaWindows(snapshots, new Date('2026-08-15T04:00:00Z'))[0];
+    expect(result).toMatchObject({ acceleration_ratio: 3, safe_budget_per_day: 20.5, alert_level: 'critical' });
+  });
 });
