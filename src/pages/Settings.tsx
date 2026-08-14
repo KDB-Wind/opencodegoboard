@@ -651,7 +651,9 @@ export function Settings() {
               });
               setAutoSync(true);
               setSyncInterval(300);
-              setBackfillPages(100);
+              setBackfillMode('days');
+              setBackfillDays(90);
+              setBackfillUntil('');
               toast(t('settings.toastResetDone'), 'success');
               refetch();
             } catch (e) {

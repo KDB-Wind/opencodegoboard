@@ -66,7 +66,7 @@ function CacheBreakdown({ record, rect }: { record: UsageRecord; rect: DOMRect }
 }
 
 export function UsageTable({ records, showAccount }: UsageTableProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [hover, setHover] = useState<{ record: UsageRecord; rect: DOMRect } | null>(null);
 
   const formatTime = (iso: string) => {
