@@ -18,6 +18,8 @@ import type {
   UsageSession,
   ProjectUsageStat,
 } from './types';
+import { invoke } from '@tauri-apps/api/core';
+import { isTauri } from '../lib/desktop';
 
 const backendPort = typeof window !== 'undefined' && window.electronAPI?.getBackendPort
   ? window.electronAPI.getBackendPort()
@@ -39,6 +41,10 @@ const responseCache = new Map<string, { expiresAt: number; value: unknown }>();
 const inFlightGets = new Map<string, Promise<unknown>>();
 
 async function fetchGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+  if (isTauri) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    return invoke<T>('api_request', { request: { method: 'GET', path, body: null } });
+  }
   const res = await fetch(`${BASE}${path}`, { headers: authHeaders(), signal });
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -75,6 +81,11 @@ async function put<T>(path: string, body?: unknown): Promise<T> {
 }
 
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
+  if (isTauri) {
+    const result = await invoke<T>('api_request', { request: { method, path, body: body ?? null } });
+    responseCache.clear();
+    return result;
+  }
   const res = await fetch(`${BASE}${path}`, {
     method,
     headers: authHeaders(body ? { 'Content-Type': 'application/json' } : undefined),
@@ -89,6 +100,11 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
 }
 
 async function del<T>(path: string): Promise<T> {
+  if (isTauri) {
+    const result = await invoke<T>('api_request', { request: { method: 'DELETE', path, body: null } });
+    responseCache.clear();
+    return result;
+  }
   const res = await fetch(`${BASE}${path}`, { method: 'DELETE', headers: authHeaders() });
   if (!res.ok) {
     const text = await res.text().catch(() => '');

@@ -3,6 +3,9 @@
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 use tauri_plugin_opener::OpenerExt;
+mod backend;
+mod quota;
+mod usage;
 
 struct Preferences(Mutex<bool>);
 
@@ -57,7 +60,17 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(Preferences(Mutex::new(false)))
-        .invoke_handler(tauri::generate_handler![request_close, close_confirm, get_tray_mode, set_tray_mode, open_external, open_opencode_login])
+        .setup(|app| {
+            let data_dir = app.path().app_data_dir()?;
+            let db_path = data_dir.join("opencodegoboard.db");
+            backend::initialize(&db_path).map_err(std::io::Error::other)?;
+            app.manage(backend::BackendState { db_path, settings: Mutex::new(serde_json::json!({
+                "refresh":{"opencode_go":{"auto_refresh":true,"interval_sec":60}},
+                "usage_sync":{"auto_sync":true,"interval_sec":300,"backfill_pages_per_request":100,"max_pages_per_incremental":30}
+            })) });
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![request_close, close_confirm, get_tray_mode, set_tray_mode, open_external, open_opencode_login, backend::api_request])
         .run(tauri::generate_context!())
         .expect("failed to run OpenCodeGoBoard");
 }
