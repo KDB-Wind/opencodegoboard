@@ -1,0 +1,3 @@
+rollingUsage: $R[1] = { usagePercent: 23.5, resetInSec: 3600 }
+weeklyUsage:$R[2]={resetInSec:7200,usagePercent:81.25}
+monthlyUsage: $R[3] = { usagePercent: 101.5, resetInSec: 86400 }

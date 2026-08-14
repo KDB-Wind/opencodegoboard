@@ -103,4 +103,21 @@ describe('backfillUsage failure boundaries', () => {
       }),
     );
   });
+
+  it('stops exactly on a short terminal page and records that page as deepest', async () => {
+    mocks.fetchUsagePage.mockImplementation(async ({ page }: { page: number }) => {
+      if (page === 2) return [{ usg_id: 'usg_terminal' }];
+      return fullPage(page);
+    });
+
+    await expect(backfillUsage(account, 10)).resolves.toMatchObject({
+      pages_fetched: 3,
+      inserted: 3,
+    });
+
+    expect(mocks.insertUsageRecordsIgnore).toHaveBeenCalledTimes(3);
+    expect(mocks.updateUsageSyncState).toHaveBeenCalledWith(account.id, {
+      deepest_page_fetched: 2,
+    });
+  });
 });
