@@ -25,6 +25,7 @@ import {
   listUsageRecords,
   listUsageSessions,
   listSessionUsageRecords,
+  opencodeHourlyStats,
 } from './db';
 
 let testDir = '';
@@ -157,5 +158,10 @@ describe('database migrations', () => {
     expect(sessionRecords.map((record) => record.usg_id)).toEqual(['usg_reasoning']);
     const [unassigned] = listSessionUsageRecords({ account_id: account.id, session_id: null });
     expect(unassigned.map((record) => record.usg_id)).toEqual(['usg_unassigned']);
+
+    const hourly = opencodeHourlyStats();
+    expect(hourly).toHaveLength(24);
+    expect(new Set(hourly.map((row) => row.date))).toHaveLength(24);
+    expect(hourly.some((row) => row.request_count === 0)).toBe(true);
   });
 });

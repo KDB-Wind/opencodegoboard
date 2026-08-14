@@ -509,6 +509,11 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     return c.json({ days, stats: db.opencodeDailyStats(days, accountId) });
   });
 
+  app.get('/api/analytics/opencode/hourly', (c) => {
+    const accountId = c.req.query('account_id') || undefined;
+    return c.json({ hours: 24, stats: db.opencodeHourlyStats(accountId) });
+  });
+
   app.get('/api/analytics/opencode/daily/models', (c) => {
     const days = Math.max(1, Math.min(Number(c.req.query('days') || 30), 365));
     const accountId = c.req.query('account_id') || undefined;

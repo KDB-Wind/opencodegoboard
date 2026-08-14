@@ -141,6 +141,11 @@ export const api = {
     if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
     return get<{ days: number; stats: DailyStat[] }>(path);
   },
+  getHourlyStats: (accountId?: string) => {
+    let path = '/analytics/opencode/hourly';
+    if (accountId) path += `?account_id=${encodeURIComponent(accountId)}`;
+    return get<{ hours: 24; stats: DailyStat[] }>(path);
+  },
   getDailyModelStats: (days = 30, accountId?: string) => {
     let path = `/analytics/opencode/daily/models?days=${days}`;
     if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;

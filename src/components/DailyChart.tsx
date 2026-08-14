@@ -13,13 +13,14 @@ import type { DailyStat } from '../api/types';
 interface DailyChartProps {
   data: DailyStat[];
   mode: 'cost' | 'requests';
+  hourly?: boolean;
 }
 
-export function DailyChart({ data, mode }: DailyChartProps) {
+export function DailyChart({ data, mode, hourly = false }: DailyChartProps) {
   const { t } = useTranslation();
 
   const chartData = [...data].reverse().map((d) => ({
-    date: d.date.slice(5),
+    date: hourly ? d.date.slice(11, 16) : d.date.slice(5),
     fullDate: d.date,
     cost: Math.round(d.total_cost_usd * 1000000) / 1000000,
     requests: d.request_count,

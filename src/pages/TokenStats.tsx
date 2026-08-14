@@ -50,9 +50,15 @@ export function TokenStats() {
     range !== 'today',
     [range, aid],
   );
+  const { data: hourlyData } = usePolling(
+    () => api.getHourlyStats(aid),
+    60000,
+    range === 'today',
+    [aid],
+  );
 
   const stats = modelTokens?.stats ?? [];
-  const trendStats = trendData?.stats ?? [];
+  const trendStats = range === 'today' ? hourlyData?.stats ?? [] : trendData?.stats ?? [];
 
   const modelOptions = Array.from(new Set(stats.map((m) => m.model))).sort();
   const filteredStats = model ? stats.filter((m) => m.model === model) : stats;
@@ -206,7 +212,7 @@ export function TokenStats() {
         </div>
       </div>
 
-      {range !== 'today' && (
+      {(
         <>
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-base-content/50 uppercase">{t('tokenStats.trendTitle')}</h3>
@@ -241,7 +247,7 @@ export function TokenStats() {
                   {t('common.noData')}
                 </div>
               ) : (
-                <DailyChart data={trendStats} mode={mode} />
+                <DailyChart data={trendStats} mode={mode} hourly={range === 'today'} />
               )}
             </div>
           </div>

@@ -853,6 +853,54 @@ export function opencodeDailyStats(days = 30, accountId?: string | null): Record
   }));
 }
 
+export function opencodeHourlyStats(accountId?: string | null): Record<string, unknown>[] {
+  const accountFilter = accountId ? 'WHERE account_id = ?' : '';
+  const params: unknown[] = accountId ? [accountId] : [];
+  const rows = getDb().prepare(`
+    WITH RECURSIVE hours(hour, n) AS (
+      SELECT strftime('%Y-%m-%d %H:00', 'now', 'localtime', '-23 hours'), 0
+      UNION ALL
+      SELECT strftime('%Y-%m-%d %H:00', datetime(hour, '+1 hour')), n + 1
+      FROM hours WHERE n < 23
+    ), aggregated AS (
+      SELECT strftime('%Y-%m-%d %H:00', datetime(created_at), 'localtime') AS hour,
+        SUM(cost_usd) AS total_cost_usd,
+        COUNT(*) AS request_count,
+        SUM(input_tokens + cache_read_tokens + cache_write_5m_tokens + cache_write_1h_tokens) AS total_input_tokens,
+        SUM(input_tokens) AS uncached_input_tokens,
+        SUM(cache_read_tokens) AS cache_hit_tokens,
+        SUM(cache_write_5m_tokens + cache_write_1h_tokens) AS cache_write_tokens,
+        SUM(output_tokens) AS total_output_tokens,
+        SUM(reasoning_tokens) AS total_reasoning_tokens
+      FROM usage_records
+      ${accountFilter}
+      GROUP BY hour
+    )
+    SELECT hours.hour AS date,
+      COALESCE(aggregated.total_cost_usd, 0) AS total_cost_usd,
+      COALESCE(aggregated.request_count, 0) AS request_count,
+      COALESCE(aggregated.total_input_tokens, 0) AS total_input_tokens,
+      COALESCE(aggregated.uncached_input_tokens, 0) AS uncached_input_tokens,
+      COALESCE(aggregated.cache_hit_tokens, 0) AS cache_hit_tokens,
+      COALESCE(aggregated.cache_write_tokens, 0) AS cache_write_tokens,
+      COALESCE(aggregated.total_output_tokens, 0) AS total_output_tokens,
+      COALESCE(aggregated.total_reasoning_tokens, 0) AS total_reasoning_tokens
+    FROM hours LEFT JOIN aggregated ON aggregated.hour = hours.hour
+    ORDER BY hours.hour DESC
+  `).all(...params) as Array<Record<string, unknown>>;
+  return rows.map((row) => ({
+    ...row,
+    total_cost_usd: Math.round(Number(row.total_cost_usd) * 1e6) / 1e6,
+    request_count: Number(row.request_count),
+    total_input_tokens: Number(row.total_input_tokens),
+    uncached_input_tokens: Number(row.uncached_input_tokens),
+    cache_hit_tokens: Number(row.cache_hit_tokens),
+    cache_write_tokens: Number(row.cache_write_tokens),
+    total_output_tokens: Number(row.total_output_tokens),
+    total_reasoning_tokens: Number(row.total_reasoning_tokens),
+  }));
+}
+
 export function opencodeDailyModelStats(
   days = 30,
   accountId?: string | null,
