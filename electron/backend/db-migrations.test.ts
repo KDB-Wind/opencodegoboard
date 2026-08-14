@@ -26,6 +26,10 @@ import {
   listUsageSessions,
   listSessionUsageRecords,
   opencodeHourlyStats,
+  validateDatabaseFile,
+  createDatabaseBackup,
+  restoreDatabaseBackup,
+  countOpencodeAccounts,
 } from './db';
 
 let testDir = '';
@@ -163,5 +167,23 @@ describe('database migrations', () => {
     expect(hourly).toHaveLength(24);
     expect(new Set(hourly.map((row) => row.date))).toHaveLength(24);
     expect(hourly.some((row) => row.request_count === 0)).toBe(true);
+  });
+
+  it('validates backups before restore', () => {
+    initDb();
+    expect(validateDatabaseFile(dbPath())).toEqual({ schemaVersion: CURRENT_SCHEMA_VERSION });
+    const backup = createDatabaseBackup();
+    expect(backup.subarray(0, 16).toString()).toBe('SQLite format 3\u0000');
+    createOpencodeAccount({ name: 'After backup', workspace_id: 'wrk', auth_cookie: 'secret' });
+    expect(countOpencodeAccounts()).toBe(1);
+    expect(restoreDatabaseBackup(backup)).toEqual({ schemaVersion: CURRENT_SCHEMA_VERSION });
+    expect(countOpencodeAccounts()).toBe(0);
+
+    const invalidPath = path.join(testDir, 'foreign.db');
+    const foreign = new Database(invalidPath);
+    foreign.exec('CREATE TABLE unrelated (id INTEGER)');
+    foreign.pragma('user_version = 1');
+    foreign.close();
+    expect(() => validateDatabaseFile(invalidPath)).toThrow('missing required table');
   });
 });

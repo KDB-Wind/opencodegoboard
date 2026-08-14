@@ -108,6 +108,7 @@ export function Settings() {
   const [deleteTarget, setDeleteTarget] = useState<OpenCodeAccount | null>(null);
   const addModal = useRef<HTMLDialogElement>(null);
   const deleteModal = useRef<HTMLDialogElement>(null);
+  const restoreInput = useRef<HTMLInputElement>(null);
   const { theme, setTheme, readability, setReadability } = useTheme();
   const [language, setLanguageState] = useState<'zh' | 'en' | 'auto'>(() => {
     const stored = localStorage.getItem('opencodeboard-language');
@@ -347,6 +348,19 @@ export function Settings() {
     system: t('settings.system'),
   };
 
+  const restoreBackup = async (file?: File) => {
+    if (!file) return;
+    try {
+      await api.restoreDatabase(file);
+      toast(t('settings.restoreDone'), 'success');
+      refetch();
+    } catch (error) {
+      toast(t('settings.restoreFailed', { msg: (error as Error).message }), 'error');
+    } finally {
+      if (restoreInput.current) restoreInput.current.value = '';
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -571,6 +585,17 @@ export function Settings() {
       <div className="border border-base-200 rounded-xl p-4" id="backend-status">
         <h2 className="text-sm font-bold text-base-content/70 mb-4">{t('settings.backend')}</h2>
         <BackendStatus />
+      </div>
+
+      <div className="border border-base-200 rounded-xl p-4">
+        <h2 className="text-sm font-bold text-base-content/70 mb-2">{t('settings.dataManagement')}</h2>
+        <p className="text-xs text-muted mb-4">{t('settings.dataManagementDesc')}</p>
+        <div className="flex flex-wrap gap-2">
+          <button className="btn btn-outline btn-sm" onClick={() => api.exportUsageCsv()}>{t('settings.exportCsv')}</button>
+          <button className="btn btn-outline btn-sm" onClick={() => api.backupDatabase()}>{t('settings.backupDatabase')}</button>
+          <button className="btn btn-warning btn-outline btn-sm" onClick={() => restoreInput.current?.click()}>{t('settings.restoreDatabase')}</button>
+          <input ref={restoreInput} type="file" accept=".db,.sqlite,.sqlite3" className="hidden" onChange={(event) => restoreBackup(event.target.files?.[0])} />
+        </div>
       </div>
 
       <div className="border border-base-200 rounded-xl p-4">

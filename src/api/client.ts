@@ -91,6 +91,17 @@ async function del<T>(path: string): Promise<T> {
   return res.json();
 }
 
+async function download(path: string, filename: string): Promise<void> {
+  const res = await fetch(`${BASE}${path}`, { headers: authHeaders() });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  const url = URL.createObjectURL(await res.blob());
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
   // Consolidated dashboard (overview + quota + recent usage in one call)
   getDashboard: (period = '30d', signal?: AbortSignal) => get<{
@@ -195,4 +206,19 @@ export const api = {
   // Health
   health: () => get<{ status: string }>('/health'),
   dataHealth: () => get<{ accounts: UsageDataHealth[] }>('/health/data'),
+
+  // Data portability
+  exportUsageCsv: () => download('/data/export.csv', 'opencodegoboard-usage.csv'),
+  backupDatabase: () => download('/data/backup', 'opencodegoboard-backup.db'),
+  restoreDatabase: async (file: File) => {
+    const res = await fetch(`${BASE}/data/restore`, {
+      method: 'POST', headers: authHeaders({ 'Content-Type': 'application/octet-stream' }), body: file,
+    });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => ({})) as { detail?: string };
+      throw new Error(payload.detail || `${res.status} ${res.statusText}`);
+    }
+    responseCache.clear();
+    return res.json() as Promise<{ ok: boolean; schema_version: number }>;
+  },
 };

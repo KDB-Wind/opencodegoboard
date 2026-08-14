@@ -1028,3 +1028,73 @@ export function countOpencodeAccounts(): number {
     (getDb().prepare('SELECT COUNT(*) AS c FROM opencode_accounts').get() as { c: number }).c,
   );
 }
+
+export function listUsageRecordsForExport(): UsageRecordWithAccount[] {
+  const rows = getDb().prepare(`
+    SELECT ur.*, oa.name AS account_name
+    FROM usage_records ur
+    JOIN opencode_accounts oa ON oa.id = ur.account_id
+    ORDER BY ur.created_at DESC
+  `).all() as Array<Record<string, unknown>>;
+  return rows.map((row) => ({ ...mapUsage(row), account_name: String(row.account_name) }));
+}
+
+export function createDatabaseBackup(): Buffer {
+  const conn = getDb();
+  conn.pragma('wal_checkpoint(TRUNCATE)');
+  return fs.readFileSync(dbPath());
+}
+
+export function validateDatabaseFile(filePath: string): { schemaVersion: number } {
+  const candidate = new Database(filePath, { readonly: true, fileMustExist: true });
+  try {
+    const integrity = candidate.pragma('integrity_check') as Array<{ integrity_check: string }>;
+    if (integrity.length !== 1 || integrity[0].integrity_check !== 'ok') {
+      throw new Error('database integrity check failed');
+    }
+    const tables = new Set((candidate.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table'",
+    ).all() as Array<{ name: string }>).map((row) => row.name));
+    for (const required of ['opencode_accounts', 'usage_records', 'usage_sync_state', 'service_settings']) {
+      if (!tables.has(required)) throw new Error(`missing required table: ${required}`);
+    }
+    const schemaVersion = Number(candidate.pragma('user_version', { simple: true }));
+    if (schemaVersion < 1 || schemaVersion > CURRENT_SCHEMA_VERSION) {
+      throw new Error(`unsupported schema version: ${schemaVersion}`);
+    }
+    return { schemaVersion };
+  } finally {
+    candidate.close();
+  }
+}
+
+export function restoreDatabaseBackup(contents: Buffer): { schemaVersion: number } {
+  fs.mkdirSync(dataDir(), { recursive: true });
+  const target = dbPath();
+  const candidate = path.join(dataDir(), `.restore-${randomUUID()}.db`);
+  const rollback = path.join(dataDir(), `.rollback-${randomUUID()}.db`);
+  fs.writeFileSync(candidate, contents);
+  try {
+    const validation = validateDatabaseFile(candidate);
+    closeDb();
+    if (fs.existsSync(target)) fs.renameSync(target, rollback);
+    fs.renameSync(candidate, target);
+    for (const suffix of ['-wal', '-shm']) {
+      const sidecar = `${target}${suffix}`;
+      if (fs.existsSync(sidecar)) fs.rmSync(sidecar);
+    }
+    try {
+      initDb();
+      if (fs.existsSync(rollback)) fs.rmSync(rollback);
+      return validation;
+    } catch (error) {
+      closeDb();
+      if (fs.existsSync(target)) fs.rmSync(target);
+      if (fs.existsSync(rollback)) fs.renameSync(rollback, target);
+      initDb();
+      throw error;
+    }
+  } finally {
+    if (fs.existsSync(candidate)) fs.rmSync(candidate);
+  }
+}

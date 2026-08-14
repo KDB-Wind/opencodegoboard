@@ -478,6 +478,50 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     return c.json({ records: records.map(db.usageRecordWithAccountToDict), total, offset, limit });
   });
 
+  app.get('/api/data/export.csv', (c) => {
+    const escape = (value: unknown) => {
+      const text = value == null ? '' : String(value);
+      return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+    const columns = [
+      'created_at', 'account_name', 'session_id', 'model', 'provider', 'input_tokens',
+      'output_tokens', 'reasoning_tokens', 'cache_read_tokens', 'cache_write_5m_tokens',
+      'cache_write_1h_tokens', 'cost_usd', 'key_id', 'plan',
+    ] as const;
+    const rows = db.listUsageRecordsForExport();
+    const csv = [columns.join(','), ...rows.map((row) =>
+      columns.map((column) => escape(row[column])).join(','))].join('\r\n');
+    return new Response(`\uFEFF${csv}`, {
+      headers: {
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="opencodegoboard-usage.csv"',
+      },
+    });
+  });
+
+  app.get('/api/data/backup', (c) => {
+    const backup = db.createDatabaseBackup();
+    return new Response(backup, {
+      headers: {
+        'Content-Type': 'application/vnd.sqlite3',
+        'Content-Disposition': 'attachment; filename="opencodegoboard-backup.db"',
+      },
+    });
+  });
+
+  app.post('/api/data/restore', async (c) => {
+    const contents = Buffer.from(await c.req.arrayBuffer());
+    if (!contents.length || contents.length > 1024 * 1024 * 1024) {
+      return c.json({ detail: 'invalid backup size' }, 400);
+    }
+    try {
+      const result = db.restoreDatabaseBackup(contents);
+      return c.json({ ok: true, schema_version: result.schemaVersion });
+    } catch (error) {
+      return c.json({ detail: String(error instanceof Error ? error.message : error) }, 400);
+    }
+  });
+
   app.post('/api/config/reset', async (c) => {
     try {
       ensureBootstrapped();
