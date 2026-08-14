@@ -99,9 +99,9 @@ function ModelDonut({ models: raw }: { models: { model: string; total_input_toke
   return (
     <div className="space-y-3">
       <div className="flex gap-6">
-        <div className="w-[150px] h-[150px] shrink-0 select-none">
+        <div className="w-[150px] h-[150px] shrink-0 select-none" role="img" aria-label={`${t('common.input')} ${fmt(chartData[0].value)}; ${t('common.output')} ${fmt(chartData[1].value)}`}>
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
+            <PieChart accessibilityLayer>
               <Pie
                 data={chartData}
                 cx="50%"

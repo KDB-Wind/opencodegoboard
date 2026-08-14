@@ -4,6 +4,8 @@
     "subtitle": "- OpenCode Go Manager"
   },
   "nav": {
+    "primary": "Primary navigation",
+    "skipToContent": "Skip to main content",
     "dashboard": "Dashboard",
     "tokens": "Stats",
     "daily": "Daily",
@@ -117,6 +119,7 @@
     ,"notificationTitle": "OpenCode Go quota alert"
   },
   "tokenStats": {
+    "chartDescription": "{{mode}} trend chart with {{count}} data points",
     "title": "Usage Stats",
     "subtitle": "Token usage, model ranking and trends for any period",
     "totalRequests": "Total Requests",

@@ -71,7 +71,7 @@ html[data-readability="high-contrast"] :where(.border-base-200, .border-base-300
 }
 
 .input-native {
-  @apply input input-sm w-full border border-base-300 focus:outline-none focus:border-primary/40 transition-colors px-3 py-2.5;
+  @apply input input-sm w-full border border-base-300 focus:border-primary/40 transition-colors px-3 py-2.5;
 }
 
 .input-native::placeholder {
@@ -98,13 +98,21 @@ html[data-readability="high-contrast"] :where(.border-base-200, .border-base-300
   outline: none !important;
 }
 
-.recharts-surface * {
-  outline: none !important;
-  -webkit-tap-highlight-color: transparent;
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-primary) !important;
+  outline-offset: 2px;
 }
 
-*:focus {
-  outline: none !important;
+.skip-link {
+  position: fixed;
+  left: 0.75rem;
+  top: 0.5rem;
+  z-index: 1000;
+  transform: translateY(-160%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
 }
 
 @keyframes fadeIn {

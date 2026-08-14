@@ -4,6 +4,8 @@
     "subtitle": "- OpenCode Go Manager"
   },
   "nav": {
+    "primary": "主导航",
+    "skipToContent": "跳到主要内容",
     "dashboard": "总览",
     "tokens": "统计",
     "daily": "每日",
@@ -117,6 +119,7 @@
     ,"notificationTitle": "OpenCode Go 额度提醒"
   },
   "tokenStats": {
+    "chartDescription": "{{mode}}趋势图，共 {{count}} 个数据点",
     "title": "用量统计",
     "subtitle": "查看任意时段的 Token 用量、模型排行与趋势",
     "totalRequests": "总请求",

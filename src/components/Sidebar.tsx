@@ -59,8 +59,9 @@ const icons: Record<string, JSX.Element> = {
 
 function SidebarInner() {
   const links = useLinks();
+  const { t } = useTranslation();
   return (
-    <nav className="w-16 bg-base-200 border-r border-base-300 flex flex-col items-center py-4 gap-1 shrink-0">
+    <nav aria-label={t('nav.primary')} className="w-16 bg-base-200 border-r border-base-300 flex flex-col items-center py-4 gap-1 shrink-0">
       {links.map((link) => (
         <NavLink
           key={link.to}
@@ -74,6 +75,7 @@ function SidebarInner() {
             }`
           }
           data-tip={link.label}
+          aria-label={link.label}
         >
           {icons[link.icon]}
         </NavLink>

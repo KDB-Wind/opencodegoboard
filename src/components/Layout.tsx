@@ -3,16 +3,19 @@ import { Outlet } from 'react-router-dom';
 import { TitleBar } from './TitleBar';
 import { Sidebar } from './Sidebar';
 import { OnboardingDialog } from './OnboardingDialog';
+import { useTranslation } from 'react-i18next';
 
 export function Layout() {
   const location = useLocation();
+  const { t } = useTranslation();
 
   return (
     <div className="h-screen flex flex-col bg-base-100 overflow-hidden">
+      <a className="skip-link btn btn-primary btn-sm" href="#main-content">{t('nav.skipToContent')}</a>
       <TitleBar />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <main className="flex-1 content-area" key={location.pathname}>
+        <main id="main-content" tabIndex={-1} className="flex-1 content-area" key={location.pathname}>
           <div className="p-6 page-enter">
             <Outlet />
           </div>

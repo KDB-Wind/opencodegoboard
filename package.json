@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "fixture:sanitize": "node scripts/sanitize-fixture.mjs",
+    "a11y:check": "node scripts/check-accessibility.mjs",
     "tauri": "tauri",
     "tauri:build": "tauri build",
     "build:vite": "vite build",

@@ -45,8 +45,16 @@ export function DailyChart({ data, mode, hourly = false }: DailyChartProps) {
   };
 
   return (
-    <ResponsiveContainer width="100%" height={320} className="select-none">
-      <LineChart data={chartData} margin={{ left: 10 }}>
+    <div role="img" aria-label={t('tokenStats.chartDescription', { mode: t(`tokenStats.${mode}`), count: chartData.length })}>
+      {mode === 'compare' && (
+        <div className="flex flex-wrap gap-4 text-xs text-muted mb-2" aria-hidden="true">
+          <span>━━ {t('tokenStats.trendCost')}</span>
+          <span>┅┅ {t('tokenStats.trendRequests')}</span>
+          <span>··· {t('tokenStats.trendTokens')}</span>
+        </div>
+      )}
+      <ResponsiveContainer width="100%" height={320} className="select-none">
+      <LineChart accessibilityLayer data={chartData} margin={{ left: 10 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.87 0.01 80)" />
         <XAxis
           dataKey="date"
@@ -84,8 +92,8 @@ export function DailyChart({ data, mode, hourly = false }: DailyChartProps) {
         {mode === 'compare' ? (
           <>
             <Line type="monotone" dataKey="costNormalized" stroke="oklch(0.58 0.20 340)" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="requestsNormalized" stroke="oklch(0.62 0.17 230)" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="tokensNormalized" stroke="oklch(0.65 0.17 145)" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="requestsNormalized" stroke="oklch(0.62 0.17 230)" strokeDasharray="8 4" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="tokensNormalized" stroke="oklch(0.65 0.17 145)" strokeDasharray="2 4" strokeWidth={3} dot={false} />
           </>
         ) : (
           <Line
@@ -98,6 +106,7 @@ export function DailyChart({ data, mode, hourly = false }: DailyChartProps) {
           />
         )}
       </LineChart>
-    </ResponsiveContainer>
+      </ResponsiveContainer>
+    </div>
   );
 }
