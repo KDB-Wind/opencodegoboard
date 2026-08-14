@@ -8,6 +8,8 @@ import type {
   QuotaSnapshot,
   QuotaIntelligence,
   QuotaReconciliationEvent,
+  QuotaWeightRule,
+  QuotaUnitStats,
   ServiceConfig,
   UsageRecord,
   UsageResponse,
@@ -115,6 +117,7 @@ export const api = {
     data_health: UsageDataHealth[];
     quota_intelligence: QuotaIntelligence[];
     quota_reconciliation: QuotaReconciliationEvent[];
+    quota_units: QuotaUnitStats;
     period: string;
   }>(`/dashboard?period=${period}`, signal),
   // Config
@@ -148,6 +151,14 @@ export const api = {
   ),
   getQuotaReconciliation: (accountId?: string) => get<{ events: QuotaReconciliationEvent[] }>(
     `/quota/reconciliation${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ''}`,
+  ),
+  getQuotaWeightRules: () => get<{ rules: QuotaWeightRule[] }>('/quota/weights'),
+  createQuotaWeightRule: (rule: {
+    account_id?: string | null; plan?: string | null; model_pattern: string;
+    weight: number; effective_from: string;
+  }) => post<QuotaWeightRule>('/quota/weights', rule),
+  getQuotaUnits: (period = '30d', accountId?: string) => get<QuotaUnitStats>(
+    `/quota/units?period=${encodeURIComponent(period)}${accountId ? `&account_id=${encodeURIComponent(accountId)}` : ''}`,
   ),
   getAccountQuota: (id: string) => get<QuotaAccount>(`/accounts/opencode/${id}/quota`),
 

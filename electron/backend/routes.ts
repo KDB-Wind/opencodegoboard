@@ -55,6 +55,14 @@ const ServiceConfigUpdate = z.object({
     .optional(),
 });
 
+const QuotaWeightRuleCreate = z.object({
+  account_id: z.string().nullable().optional(),
+  plan: z.string().nullable().optional(),
+  model_pattern: z.string().min(1).default('*'),
+  weight: z.number().positive(),
+  effective_from: z.string().datetime(),
+});
+
 function opencodeAccountDict(row: db.OpenCodeAccountRow): Record<string, unknown> {
   return {
     id: row.id,
@@ -401,6 +409,15 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     )),
   }));
 
+  app.get('/api/quota/weights', (c) => c.json({ rules: db.listQuotaWeightRules() }));
+  app.post('/api/quota/weights', async (c) => {
+    const body = QuotaWeightRuleCreate.parse(await c.req.json());
+    return c.json(db.createQuotaWeightRule(body), 201);
+  });
+  app.get('/api/quota/units', (c) => c.json(db.opencodeQuotaUnitStats(
+    c.req.query('period') || '30d', c.req.query('account_id') || undefined,
+  )));
+
   app.get('/api/dashboard', async (c) => {
     const period = c.req.query('period') || '30d';
     if (!/^(5h|today|all|\d+d)$/.test(period)) {
@@ -415,6 +432,7 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     const dataHealth = db.listUsageDataHealth();
     const quotaIntelligence = analyzeQuotaWindows(db.listQuotaSnapshots({ limit: 5000 }));
     const quotaReconciliation = reconcileQuotaWindows(db.listQuotaReconciliationInputs());
+    const quotaUnits = db.opencodeQuotaUnitStats(period);
     return c.json({
       overview,
       quota,
@@ -426,6 +444,7 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
       data_health: dataHealth,
       quota_intelligence: quotaIntelligence,
       quota_reconciliation: quotaReconciliation.slice(0, 50),
+      quota_units: quotaUnits,
       period,
     });
   });

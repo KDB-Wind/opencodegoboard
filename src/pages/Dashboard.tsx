@@ -229,6 +229,7 @@ export function Dashboard() {
       0,
     );
     const totalCost = tokens.reduce((s, m) => s + m.total_cost_usd, 0);
+    const quotaUnits = data?.quota_units?.total_quota_units;
     return [
       { label: t('dashboard.account'), value: overview?.account_count ?? '-', sub: t('dashboard.availableBlocked', { available: overview?.success_count ?? 0, blocked: overview?.blocked_count ?? 0 }), breakdown: null, size: 'sm' },
       { label: t('dashboard.remainingQuota'), value: overview ? `${overview.avg_effective_remaining}%` : '-', sub: t('dashboard.avgRemainingRatio'), breakdown: null, size: 'sm' },
@@ -256,8 +257,15 @@ export function Dashboard() {
         breakdown: null,
         size: 'md',
       },
+      {
+        label: t('dashboard.quotaUnits'),
+        value: quotaUnits == null ? '-' : quotaUnits.toFixed(2),
+        sub: t('dashboard.quotaUnitsDesc'),
+        breakdown: null,
+        size: 'md',
+      },
     ];
-  }, [overview, tokens, todayTokens, t, i18n.language]);
+  }, [overview, tokens, todayTokens, data?.quota_units?.total_quota_units, t, i18n.language]);
 
   if (loading && !data) {
     return (
@@ -298,7 +306,7 @@ export function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {hero.map((h) => (
           <div key={h.label} className="border border-base-200 rounded-xl px-3 py-2.5">
             <div className="metric-label tracking-wider truncate">{h.label}</div>

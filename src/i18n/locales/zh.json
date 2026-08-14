@@ -105,6 +105,8 @@
     ,"reconcile_missing_local_usage": "本地用量可能缺失"
     ,"reconcile_rule_change": "额度规则变化"
     ,"reconcile_matched": "已对账"
+    ,"quotaUnits": "额度单位消耗"
+    ,"quotaUnitsDesc": "每百万处理 Token × 生效权重"
   },
   "tokenStats": {
     "title": "用量统计",

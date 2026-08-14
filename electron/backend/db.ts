@@ -171,7 +171,7 @@ interface DbMigration {
   up: (conn: Database.Database) => void;
 }
 
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 const MIGRATIONS: DbMigration[] = [
   {
@@ -337,6 +337,29 @@ const MIGRATIONS: DbMigration[] = [
       );
       CREATE INDEX IF NOT EXISTS idx_quota_snapshot_window_time
         ON quota_snapshots(account_id, window_label, captured_at DESC);
+    `),
+  },
+  {
+    version: 6,
+    name: 'versioned quota unit weight rules',
+    up: (conn) => conn.exec(`
+      CREATE TABLE IF NOT EXISTS quota_weight_rules (
+        id TEXT PRIMARY KEY,
+        account_id TEXT REFERENCES opencode_accounts(id) ON DELETE CASCADE,
+        plan TEXT,
+        model_pattern TEXT NOT NULL DEFAULT '*',
+        weight REAL NOT NULL CHECK(weight > 0),
+        effective_from TEXT NOT NULL,
+        source TEXT NOT NULL DEFAULT 'manual',
+        sample_count INTEGER NOT NULL DEFAULT 0,
+        confidence REAL NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_quota_weight_effective
+        ON quota_weight_rules(account_id, plan, effective_from DESC);
+      INSERT OR IGNORE INTO quota_weight_rules (
+        id, account_id, plan, model_pattern, weight, effective_from, source, created_at
+      ) VALUES ('default', NULL, NULL, '*', 1, '1970-01-01T00:00:00Z', 'default', '1970-01-01T00:00:00Z');
     `),
   },
 ];
@@ -1125,6 +1148,93 @@ export function listQuotaReconciliationInputs(accountId?: string): Array<Record<
     ORDER BY ordered.captured_at DESC
     LIMIT 5000
   `).all(...params) as Array<Record<string, unknown>>;
+}
+
+export function listQuotaWeightRules(): Array<Record<string, unknown>> {
+  return getDb().prepare(`
+    SELECT qwr.*, oa.name AS account_name
+    FROM quota_weight_rules qwr
+    LEFT JOIN opencode_accounts oa ON oa.id = qwr.account_id
+    ORDER BY qwr.effective_from DESC, qwr.created_at DESC
+  `).all() as Array<Record<string, unknown>>;
+}
+
+export function createQuotaWeightRule(input: {
+  account_id?: string | null;
+  plan?: string | null;
+  model_pattern: string;
+  weight: number;
+  effective_from: string;
+  source?: string;
+  sample_count?: number;
+  confidence?: number;
+}): Record<string, unknown> {
+  const id = randomUUID();
+  getDb().prepare(`
+    INSERT INTO quota_weight_rules (
+      id, account_id, plan, model_pattern, weight, effective_from,
+      source, sample_count, confidence, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id, input.account_id || null, input.plan || null, input.model_pattern.trim() || '*',
+    Math.max(0.0001, input.weight), input.effective_from, input.source || 'manual',
+    Math.max(0, input.sample_count || 0), Math.max(0, Math.min(1, input.confidence || 0)), nowIso(),
+  );
+  return getDb().prepare('SELECT * FROM quota_weight_rules WHERE id = ?').get(id) as Record<string, unknown>;
+}
+
+function globMatches(pattern: string, value: string): boolean {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.');
+  return new RegExp(`^${escaped}$`, 'i').test(value);
+}
+
+export function opencodeQuotaUnitStats(period = '30d', accountId?: string): Record<string, unknown> {
+  const clauses: string[] = [];
+  const params: unknown[] = [];
+  if (period === '5h') clauses.push("datetime(created_at) >= datetime('now', '-5 hours')");
+  else if (period === 'today') clauses.push("substr(datetime(created_at, 'localtime'), 1, 10) = date('now', 'localtime')");
+  else if (period !== 'all') {
+    const days = Math.max(1, Number(/^(\d+)d$/.exec(period)?.[1] ?? 30));
+    clauses.push("datetime(created_at) >= datetime('now', ?)");
+    params.push(`-${days} days`);
+  }
+  if (accountId) { clauses.push('account_id = ?'); params.push(accountId); }
+  const records = getDb().prepare(`
+    SELECT account_id, plan, model, created_at,
+      input_tokens + output_tokens + reasoning_tokens + cache_read_tokens + cache_write_5m_tokens + cache_write_1h_tokens AS processed_tokens
+    FROM usage_records ${clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''}
+  `).all(...params) as Array<Record<string, unknown>>;
+  const rules = listQuotaWeightRules();
+  const byModel = new Map<string, { units: number; tokens: number; requests: number }>();
+  let totalUnits = 0;
+  for (const record of records) {
+    const candidates = rules.filter((rule) =>
+      (!rule.account_id || rule.account_id === record.account_id) &&
+      (!rule.plan || rule.plan === record.plan) &&
+      String(rule.effective_from) <= String(record.created_at) &&
+      globMatches(String(rule.model_pattern), String(record.model)));
+    candidates.sort((a, b) =>
+      Number(Boolean(b.account_id)) - Number(Boolean(a.account_id)) ||
+      Number(Boolean(b.plan)) - Number(Boolean(a.plan)) ||
+      String(b.effective_from).localeCompare(String(a.effective_from)) ||
+      String(b.model_pattern).length - String(a.model_pattern).length);
+    const weight = Number(candidates[0]?.weight || 1);
+    const tokens = Number(record.processed_tokens || 0);
+    const units = tokens / 1_000_000 * weight;
+    totalUnits += units;
+    const model = String(record.model);
+    const current = byModel.get(model) ?? { units: 0, tokens: 0, requests: 0 };
+    current.units += units; current.tokens += tokens; current.requests += 1;
+    byModel.set(model, current);
+  }
+  return {
+    period, total_quota_units: Math.round(totalUnits * 10000) / 10000,
+    request_count: records.length,
+    models: [...byModel.entries()].map(([model, stat]) => ({
+      model, quota_units: Math.round(stat.units * 10000) / 10000,
+      processed_tokens: stat.tokens, request_count: stat.requests,
+    })).sort((a, b) => b.quota_units - a.quota_units),
+  };
 }
 
 export function listUsageRecordsForExport(): UsageRecordWithAccount[] {

@@ -81,6 +81,26 @@ export interface QuotaReconciliationEvent {
   excluded_from_calibration: boolean;
 }
 
+export interface QuotaWeightRule {
+  id: string;
+  account_id: string | null;
+  account_name?: string | null;
+  plan: string | null;
+  model_pattern: string;
+  weight: number;
+  effective_from: string;
+  source: 'default' | 'manual' | 'auto';
+  sample_count: number;
+  confidence: number;
+}
+
+export interface QuotaUnitStats {
+  period: string;
+  total_quota_units: number;
+  request_count: number;
+  models: Array<{ model: string; quota_units: number; processed_tokens: number; request_count: number }>;
+}
+
 export interface Overview {
   opencode: {
     avg_effective_remaining: number;

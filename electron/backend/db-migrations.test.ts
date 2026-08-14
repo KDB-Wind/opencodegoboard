@@ -32,6 +32,8 @@ import {
   countOpencodeAccounts,
   saveQuotaSnapshots,
   listQuotaSnapshots,
+  listQuotaWeightRules,
+  createQuotaWeightRule,
 } from './db';
 
 let testDir = '';
@@ -75,6 +77,9 @@ describe('database migrations', () => {
     expect(
       (getDb().pragma('table_info(quota_snapshots)') as Array<{ name: string }>).map((column) => column.name),
     ).toEqual(expect.arrayContaining(['account_id', 'window_label', 'captured_at', 'reset_at']));
+    expect(listQuotaWeightRules()).toEqual([
+      expect.objectContaining({ id: 'default', model_pattern: '*', weight: 1, source: 'default' }),
+    ]);
 
     expect(() => initDb()).not.toThrow();
     expect(getSchemaVersion()).toBe(CURRENT_SCHEMA_VERSION);
@@ -204,5 +209,17 @@ describe('database migrations', () => {
     expect(listQuotaSnapshots({ account_id: account.id })).toEqual([
       expect.objectContaining({ account_id: account.id, window_label: 'Weekly', used: 25, remaining: 75 }),
     ]);
+  });
+
+  it('stores account and time scoped quota weight rules', () => {
+    initDb();
+    const account = createOpencodeAccount({ name: 'A', workspace_id: 'wrk', auth_cookie: 'secret' });
+    createQuotaWeightRule({
+      account_id: account.id, plan: 'go', model_pattern: 'claude-*', weight: 2.5,
+      effective_from: '2026-08-15T00:00:00Z',
+    });
+    expect(listQuotaWeightRules()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ account_id: account.id, plan: 'go', model_pattern: 'claude-*', weight: 2.5 }),
+    ]));
   });
 });

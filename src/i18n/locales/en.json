@@ -105,6 +105,8 @@
     ,"reconcile_missing_local_usage": "Local usage may be missing"
     ,"reconcile_rule_change": "Quota rule changed"
     ,"reconcile_matched": "Reconciled"
+    ,"quotaUnits": "Quota units consumed"
+    ,"quotaUnitsDesc": "Per 1M processed tokens × effective weight"
   },
   "tokenStats": {
     "title": "Usage Stats",
