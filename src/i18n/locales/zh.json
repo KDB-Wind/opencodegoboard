@@ -107,6 +107,8 @@
     ,"reconcile_matched": "已对账"
     ,"quotaUnits": "额度单位消耗"
     ,"quotaUnitsDesc": "每百万处理 Token × 生效权重"
+    ,"bottleneckQuota": "最紧张额度窗口"
+    ,"noBottleneck": "暂无可用窗口"
   },
   "tokenStats": {
     "title": "用量统计",

@@ -107,6 +107,8 @@
     ,"reconcile_matched": "Reconciled"
     ,"quotaUnits": "Quota units consumed"
     ,"quotaUnitsDesc": "Per 1M processed tokens × effective weight"
+    ,"bottleneckQuota": "Tightest quota window"
+    ,"noBottleneck": "No available window"
   },
   "tokenStats": {
     "title": "Usage Stats",

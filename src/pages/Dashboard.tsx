@@ -232,7 +232,7 @@ export function Dashboard() {
     const quotaUnits = data?.quota_units?.total_quota_units;
     return [
       { label: t('dashboard.account'), value: overview?.account_count ?? '-', sub: t('dashboard.availableBlocked', { available: overview?.success_count ?? 0, blocked: overview?.blocked_count ?? 0 }), breakdown: null, size: 'sm' },
-      { label: t('dashboard.remainingQuota'), value: overview ? `${overview.avg_effective_remaining}%` : '-', sub: t('dashboard.avgRemainingRatio'), breakdown: null, size: 'sm' },
+      { label: t('dashboard.bottleneckQuota'), value: overview?.bottleneck ? `${overview.bottleneck.remaining}%` : '-', sub: overview?.bottleneck ? `${overview.bottleneck.name} · ${overview.bottleneck.window}` : t('dashboard.noBottleneck'), breakdown: null, size: 'sm' },
       {
         label: t('dashboard.totalTokenConsumption'),
         value: fmt(tkn),

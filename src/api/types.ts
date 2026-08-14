@@ -114,7 +114,10 @@ export interface Overview {
       effective_remaining: number;
       blocked: boolean;
       windows: QuotaWindow[];
+      bottleneck_window: string | null;
+      bottleneck_remaining: number | null;
     }>;
+    bottleneck: { account_id: string; name: string; window: string; remaining: number } | null;
   };
 }
 

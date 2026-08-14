@@ -65,6 +65,11 @@ export function aggregateOpencode(accounts: Record<string, unknown>[]): Record<s
     const windows = (account.windows as Record<string, unknown>[]) || [];
     const cascaded = applyOpencodeCascade(windows);
     const effective = opencodeEffectiveRemaining(windows);
+    const bottleneck = cascaded.reduce<Record<string, unknown> | null>((lowest, window) => {
+      const remaining = Number(window.effective_remaining ?? window.remaining ?? 0);
+      if (!lowest || remaining < Number(lowest.effective_remaining ?? lowest.remaining ?? 0)) return window;
+      return lowest;
+    }, null);
     const isBlocked = effective <= 0 && Boolean(account.success);
     if (isBlocked) blockedCount += 1;
     if (account.success) effectiveValues.push(effective);
@@ -75,6 +80,8 @@ export function aggregateOpencode(accounts: Record<string, unknown>[]): Record<s
       effective_remaining: Math.round(effective * 10) / 10,
       blocked: isBlocked,
       windows: cascaded,
+      bottleneck_window: bottleneck?.label ?? null,
+      bottleneck_remaining: bottleneck == null ? null : Number(bottleneck.effective_remaining ?? bottleneck.remaining ?? 0),
     });
   }
 
@@ -85,12 +92,21 @@ export function aggregateOpencode(accounts: Record<string, unknown>[]): Record<s
         ) / 10
       : 0.0;
 
+  const globalBottleneck = [...perAccount]
+    .filter((account) => account.success && account.bottleneck_remaining != null)
+    .sort((a, b) => Number(a.bottleneck_remaining) - Number(b.bottleneck_remaining))[0] ?? null;
   return {
     avg_effective_remaining: avgEffective,
     account_count: accounts.length,
     success_count: effectiveValues.length,
     blocked_count: blockedCount,
     accounts: perAccount,
+    bottleneck: globalBottleneck ? {
+      account_id: globalBottleneck.account_id,
+      name: globalBottleneck.name,
+      window: globalBottleneck.bottleneck_window,
+      remaining: globalBottleneck.bottleneck_remaining,
+    } : null,
   };
 }
 
