@@ -109,6 +109,11 @@
     ,"quotaUnitsDesc": "Per 1M processed tokens × effective weight"
     ,"bottleneckQuota": "Tightest quota window"
     ,"noBottleneck": "No available window"
+    ,"recommendationTitle": "Current recommendation"
+    ,"recommendAccount": "Account: {{account}} ({{remaining}}% bottleneck remaining, {{reason}})"
+    ,"recommendModel": "Model: {{model}} (weight {{weight}})"
+    ,"reason_best_safe_headroom": "best safe headroom"
+    ,"reason_least_risk_among_critical": "all accounts are at risk; this is the least risky"
   },
   "tokenStats": {
     "title": "Usage Stats",

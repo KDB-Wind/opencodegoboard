@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeQuotaWindows, reconcileQuotaWindows } from './quota-intelligence';
+import { analyzeQuotaWindows, buildUsageRecommendations, reconcileQuotaWindows } from './quota-intelligence';
 
 const base = {
   account_id: 'a', account_name: 'Main', window_label: 'Weekly',
@@ -57,5 +57,21 @@ describe('quota reconciliation', () => {
     ]).map((event) => event.event_type)).toEqual([
       'reset', 'top_up', 'missing_local_usage', 'rule_change',
     ]);
+  });
+});
+
+describe('usage recommendations', () => {
+  it('selects safe account headroom and the lowest effective model weight', () => {
+    const recommendation = buildUsageRecommendations([
+      { account_id: 'a', account_name: 'A', remaining: 30, can_last_until_reset: true, sample_count: 3 },
+      { account_id: 'b', account_name: 'B', remaining: 70, can_last_until_reset: true, sample_count: 5 },
+    ], [
+      { account_id: null, model_pattern: '*', weight: 1, effective_from: '1970-01-01T00:00:00Z' },
+      { account_id: 'b', model_pattern: 'fast-model', weight: 0.5, effective_from: '2026-01-01T00:00:00Z' },
+    ], [{ model: 'smart-model' }, { model: 'fast-model' }]);
+    expect(recommendation).toMatchObject({
+      account: { account_id: 'b', reason_code: 'best_safe_headroom' },
+      model: { model: 'fast-model', weight: 0.5, reason_code: 'lowest_effective_quota_weight' },
+    });
   });
 });

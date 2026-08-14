@@ -210,6 +210,7 @@ export function Dashboard() {
   );
   const quotaIntelligence = data?.quota_intelligence ?? [];
   const reconciliationEvents = (data?.quota_reconciliation ?? []).filter((event) => event.event_type !== 'matched');
+  const recommendation = data?.recommendations;
   const tokenBreakdown = {
     uncachedInput: tokens.reduce((s, m) => s + Number(m.uncached_input_tokens ?? m.total_input_tokens ?? 0), 0),
     cacheHit: tokens.reduce((s, m) => s + Number(m.cache_hit_tokens ?? 0), 0),
@@ -301,6 +302,24 @@ export function Dashboard() {
                   {health.last_parse_error_count > 0 ? ` · ${t('dashboard.parseErrors', { count: health.last_parse_error_count })}` : ''}
                 </span>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(recommendation?.account || recommendation?.model) && (
+        <div className="alert border-primary/30 bg-primary/5 py-3" role="status">
+          <div>
+            <div className="font-semibold">{t('dashboard.recommendationTitle')}</div>
+            <div className="text-sm mt-1">
+              {recommendation.account && t('dashboard.recommendAccount', {
+                account: recommendation.account.name,
+                remaining: recommendation.account.bottleneck_remaining,
+                reason: t(`dashboard.reason_${recommendation.account.reason_code}`),
+              })}
+              {recommendation.model && ` · ${t('dashboard.recommendModel', {
+                model: recommendation.model.model, weight: recommendation.model.weight,
+              })}`}
             </div>
           </div>
         </div>

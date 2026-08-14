@@ -108,3 +108,58 @@ export function reconcileQuotaWindows(rows: Array<Record<string, unknown>>): Arr
     };
   });
 }
+
+function patternMatches(pattern: string, model: string): boolean {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.');
+  return new RegExp(`^${escaped}$`, 'i').test(model);
+}
+
+export function buildUsageRecommendations(
+  windows: Array<Record<string, unknown>>,
+  rules: Array<Record<string, unknown>>,
+  models: Array<Record<string, unknown>>,
+): Record<string, unknown> {
+  const accounts = new Map<string, { name: string; worstRemaining: number; critical: boolean; samples: number }>();
+  for (const window of windows) {
+    const id = String(window.account_id);
+    const current = accounts.get(id) ?? {
+      name: String(window.account_name), worstRemaining: 100, critical: false, samples: 0,
+    };
+    current.worstRemaining = Math.min(current.worstRemaining, Number(window.remaining));
+    current.critical ||= window.can_last_until_reset === false;
+    current.samples += Number(window.sample_count || 0);
+    accounts.set(id, current);
+  }
+  const rankedAccounts = [...accounts.entries()].sort((a, b) =>
+    Number(a[1].critical) - Number(b[1].critical) || b[1].worstRemaining - a[1].worstRemaining);
+  const recommendedAccount = rankedAccounts[0];
+
+  let modelChoice: { model: string; weight: number } | null = null;
+  if (recommendedAccount) {
+    for (const modelRow of models) {
+      const model = String(modelRow.model);
+      const candidates = rules.filter((rule) =>
+        (!rule.account_id || rule.account_id === recommendedAccount[0]) &&
+        String(rule.effective_from) <= new Date().toISOString() &&
+        patternMatches(String(rule.model_pattern), model));
+      candidates.sort((a, b) =>
+        Number(Boolean(b.account_id)) - Number(Boolean(a.account_id)) ||
+        String(b.effective_from).localeCompare(String(a.effective_from)));
+      const weight = Number(candidates[0]?.weight || 1);
+      if (!modelChoice || weight < modelChoice.weight) modelChoice = { model, weight };
+    }
+  }
+  return {
+    account: recommendedAccount ? {
+      account_id: recommendedAccount[0], name: recommendedAccount[1].name,
+      bottleneck_remaining: recommendedAccount[1].worstRemaining,
+      reason_code: recommendedAccount[1].critical ? 'least_risk_among_critical' : 'best_safe_headroom',
+      confidence: recommendedAccount[1].samples >= 6 ? 'high' : recommendedAccount[1].samples >= 2 ? 'medium' : 'low',
+    } : null,
+    model: modelChoice ? {
+      model: modelChoice.model, weight: modelChoice.weight,
+      reason_code: 'lowest_effective_quota_weight',
+    } : null,
+    generated_at: new Date().toISOString(),
+  };
+}

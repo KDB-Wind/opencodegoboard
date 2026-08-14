@@ -16,7 +16,7 @@ import { resolveAccountWorkspaceId } from './opencode-usage';
 import { fetchAllQuotas, fetchQuotaForAccount, quotaAccountToDict } from './quota';
 import * as syncProgress from './sync-progress';
 import { backfillUsage, syncResultToDict, syncUsage } from './usage-sync';
-import { analyzeQuotaWindows, reconcileQuotaWindows } from './quota-intelligence';
+import { analyzeQuotaWindows, buildUsageRecommendations, reconcileQuotaWindows } from './quota-intelligence';
 
 const OpenCodeAccountCreate = z.object({
   name: z.string(),
@@ -428,6 +428,10 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
   app.get('/api/quota/units', (c) => c.json(db.opencodeQuotaUnitStats(
     c.req.query('period') || '30d', c.req.query('account_id') || undefined,
   )));
+  app.get('/api/recommendations', (c) => c.json(buildUsageRecommendations(
+    analyzeQuotaWindows(db.listQuotaSnapshots({ limit: 5000 })),
+    db.listQuotaWeightRules(), db.opencodeModelTokenStats('30d'),
+  )));
 
   app.get('/api/dashboard', async (c) => {
     const period = c.req.query('period') || '30d';
@@ -444,6 +448,9 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     const quotaIntelligence = analyzeQuotaWindows(db.listQuotaSnapshots({ limit: 5000 }));
     const quotaReconciliation = reconcileQuotaWindows(db.listQuotaReconciliationInputs());
     const quotaUnits = db.opencodeQuotaUnitStats(period);
+    const recommendations = buildUsageRecommendations(
+      quotaIntelligence, db.listQuotaWeightRules(), modelTokens,
+    );
     return c.json({
       overview,
       quota,
@@ -456,6 +463,7 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
       quota_intelligence: quotaIntelligence,
       quota_reconciliation: quotaReconciliation.slice(0, 50),
       quota_units: quotaUnits,
+      recommendations,
       period,
     });
   });

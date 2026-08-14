@@ -109,6 +109,11 @@
     ,"quotaUnitsDesc": "每百万处理 Token × 生效权重"
     ,"bottleneckQuota": "最紧张额度窗口"
     ,"noBottleneck": "暂无可用窗口"
+    ,"recommendationTitle": "当前使用建议"
+    ,"recommendAccount": "建议账户：{{account}}（瓶颈剩余 {{remaining}}%，{{reason}}）"
+    ,"recommendModel": "建议模型：{{model}}（权重 {{weight}}）"
+    ,"reason_best_safe_headroom": "安全余量最大"
+    ,"reason_least_risk_among_critical": "所有账户均有风险，当前相对最优"
   },
   "tokenStats": {
     "title": "用量统计",

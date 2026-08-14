@@ -101,6 +101,16 @@ export interface QuotaUnitStats {
   models: Array<{ model: string; quota_units: number; processed_tokens: number; request_count: number }>;
 }
 
+export interface UsageRecommendation {
+  account: {
+    account_id: string; name: string; bottleneck_remaining: number;
+    reason_code: 'best_safe_headroom' | 'least_risk_among_critical';
+    confidence: 'high' | 'medium' | 'low';
+  } | null;
+  model: { model: string; weight: number; reason_code: 'lowest_effective_quota_weight' } | null;
+  generated_at: string;
+}
+
 export interface Overview {
   opencode: {
     avg_effective_remaining: number;
