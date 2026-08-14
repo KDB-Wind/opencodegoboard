@@ -85,7 +85,6 @@ opencodeboard/
 │       ├── db.ts          # SQLite CRUD
 │       ├── config.ts      # Config/masking
 │       ├── quota.ts       # OpenCode quota fetcher
-│       ├── ollama-quota.ts # Ollama quota fetcher
 │       ├── opencode-usage.ts # Usage record fetcher
 │       ├── usage-sync.ts  # Incremental/backfill sync
 │       ├── analytics.ts   # Dashboard aggregation

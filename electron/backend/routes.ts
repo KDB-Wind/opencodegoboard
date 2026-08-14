@@ -8,13 +8,10 @@ import { buildOverview } from './analytics';
 import {
   loadServiceConfig,
   maskCookie,
-  maskOllamaCookie,
   saveSettingsPayload,
   updateServiceConfig,
   type AccountConfig,
-  type OllamaAccountConfig,
 } from './config';
-import { fetchAllOllamaQuotas } from './ollama-quota';
 import { resolveAccountWorkspaceId } from './opencode-usage';
 import { fetchAllQuotas, fetchQuotaForAccount, quotaAccountToDict } from './quota';
 import * as syncProgress from './sync-progress';
@@ -37,22 +34,6 @@ const OpenCodeAccountUpdate = z.object({
   show_rolling: z.boolean().optional(),
   show_weekly: z.boolean().optional(),
   show_monthly: z.boolean().optional(),
-  enabled: z.boolean().optional(),
-});
-
-const OllamaAccountCreate = z.object({
-  name: z.string(),
-  session_cookie: z.string(),
-  show_session: z.boolean().optional().default(true),
-  show_weekly: z.boolean().optional().default(true),
-  enabled: z.boolean().optional().default(true),
-});
-
-const OllamaAccountUpdate = z.object({
-  name: z.string().optional(),
-  session_cookie: z.string().optional(),
-  show_session: z.boolean().optional(),
-  show_weekly: z.boolean().optional(),
   enabled: z.boolean().optional(),
 });
 
@@ -90,28 +71,10 @@ function opencodeAccountDict(row: db.OpenCodeAccountRow): Record<string, unknown
   };
 }
 
-function ollamaAccountDict(row: db.OllamaAccountRow): Record<string, unknown> {
-  return {
-    id: row.id,
-    name: row.name,
-    session_cookie_masked: maskOllamaCookie(row.session_cookie),
-    configured: Boolean(row.session_cookie.trim()),
-    show_session: row.show_session,
-    show_weekly: row.show_weekly,
-    enabled: row.enabled,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  };
-}
-
 function buildConfigResponse(): Record<string, unknown> {
   const service = loadServiceConfig();
   return {
     refresh: {
-      ollama: {
-        auto_refresh: service.refresh_ollama.auto_refresh,
-        interval_sec: service.refresh_ollama.interval_sec,
-      },
       opencode_go: {
         auto_refresh: service.refresh_opencode_go.auto_refresh,
         interval_sec: service.refresh_opencode_go.interval_sec,
@@ -125,10 +88,8 @@ function buildConfigResponse(): Record<string, unknown> {
     },
     accounts_imported:
       fs.existsSync(db.importedFlagPath()) ||
-      db.countOpencodeAccounts() > 0 ||
-      db.countOllamaAccounts() > 0,
+      db.countOpencodeAccounts() > 0,
     opencode_accounts: db.listOpencodeAccounts().map(opencodeAccountDict),
-    ollama_accounts: db.listOllamaAccounts().map(ollamaAccountDict),
   };
 }
 
@@ -390,45 +351,6 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
     return c.json(syncProgress.get(accountId));
   });
 
-  app.get('/api/accounts/ollama', (c) => {
-    return c.json(db.listOllamaAccounts().map(ollamaAccountDict));
-  });
-
-  app.post('/api/accounts/ollama', async (c) => {
-    const body = OllamaAccountCreate.parse(await c.req.json());
-    if (!body.session_cookie.trim()) {
-      return c.json({ detail: 'session_cookie 不能为空' }, 400);
-    }
-    const row = db.createOllamaAccount({
-      name: body.name.trim() || 'Ollama',
-      session_cookie: body.session_cookie.trim(),
-      show_session: body.show_session,
-      show_weekly: body.show_weekly,
-      enabled: body.enabled,
-    });
-    return c.json(ollamaAccountDict(row));
-  });
-
-  app.put('/api/accounts/ollama/:accountId', async (c) => {
-    const body = OllamaAccountUpdate.parse(await c.req.json());
-    const fields: Record<string, unknown> = {};
-    if (body.name !== undefined) fields.name = body.name.trim() || 'Ollama';
-    if (body.session_cookie !== undefined) fields.session_cookie = body.session_cookie.trim();
-    if (body.show_session !== undefined) fields.show_session = body.show_session;
-    if (body.show_weekly !== undefined) fields.show_weekly = body.show_weekly;
-    if (body.enabled !== undefined) fields.enabled = body.enabled;
-    const row = db.updateOllamaAccount(c.req.param('accountId'), fields);
-    if (!row) return c.json({ detail: '账号不存在' }, 404);
-    return c.json(ollamaAccountDict(row));
-  });
-
-  app.delete('/api/accounts/ollama/:accountId', (c) => {
-    if (!db.deleteOllamaAccount(c.req.param('accountId'))) {
-      return c.json({ detail: '账号不存在' }, 404);
-    }
-    return c.json({ ok: true });
-  });
-
   app.get('/api/quota', async (c) => {
     try {
       loadServiceConfig();
@@ -446,28 +368,6 @@ export function createApp(opts: { onConfigUpdated?: RestartSyncFn; authToken?: s
       show_monthly: row.show_monthly,
     }));
     const results = await fetchAllQuotas(accounts);
-    const idByName = Object.fromEntries(rows.map((r) => [r.name, r.id]));
-    for (const item of results) {
-      item.account_id = idByName[String(item.name ?? '')];
-    }
-    return c.json(results);
-  });
-
-  app.get('/api/ollama/quota', async (c) => {
-    try {
-      loadServiceConfig();
-    } catch (exc) {
-      return c.json({ detail: String(exc instanceof Error ? exc.message : exc) }, 500);
-    }
-    const rows = db.listOllamaAccounts(true);
-    if (!rows.length) return c.json([]);
-    const accounts: OllamaAccountConfig[] = rows.map((row) => ({
-      name: row.name,
-      session_cookie: row.session_cookie,
-      show_session: row.show_session,
-      show_weekly: row.show_weekly,
-    }));
-    const results = await fetchAllOllamaQuotas(accounts);
     const idByName = Object.fromEntries(rows.map((r) => [r.name, r.id]));
     for (const item of results) {
       item.account_id = idByName[String(item.name ?? '')];

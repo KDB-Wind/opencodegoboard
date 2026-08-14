@@ -19,17 +19,6 @@ export interface OpenCodeAccountRow {
   updated_at: string;
 }
 
-export interface OllamaAccountRow {
-  id: string;
-  name: string;
-  session_cookie: string;
-  show_session: boolean;
-  show_weekly: boolean;
-  enabled: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface UsageRecordRow {
   usg_id: string;
   account_id: string;
@@ -131,19 +120,6 @@ function mapOpenCode(row: Record<string, unknown>): OpenCodeAccountRow {
     show_rolling: Boolean(row.show_rolling),
     show_weekly: Boolean(row.show_weekly),
     show_monthly: Boolean(row.show_monthly),
-    enabled: Boolean(row.enabled),
-    created_at: String(row.created_at),
-    updated_at: String(row.updated_at),
-  };
-}
-
-function mapOllama(row: Record<string, unknown>): OllamaAccountRow {
-  return {
-    id: String(row.id),
-    name: String(row.name),
-    session_cookie: decryptSecret(String(row.session_cookie)),
-    show_session: Boolean(row.show_session),
-    show_weekly: Boolean(row.show_weekly),
     enabled: Boolean(row.enabled),
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -511,86 +487,6 @@ export function updateOpencodeAccount(
 
 export function deleteOpencodeAccount(accountId: string): boolean {
   const result = getDb().prepare('DELETE FROM opencode_accounts WHERE id = ?').run(accountId);
-  return result.changes > 0;
-}
-
-export function listOllamaAccounts(enabledOnly = false): OllamaAccountRow[] {
-  let sql = 'SELECT * FROM ollama_accounts';
-  if (enabledOnly) sql += ' WHERE enabled = 1';
-  sql += ' ORDER BY created_at ASC';
-  return getDb()
-    .prepare(sql)
-    .all()
-    .map((r) => mapOllama(r as Record<string, unknown>));
-}
-
-export function getOllamaAccount(accountId: string): OllamaAccountRow | null {
-  const row = getDb().prepare('SELECT * FROM ollama_accounts WHERE id = ?').get(accountId);
-  return row ? mapOllama(row as Record<string, unknown>) : null;
-}
-
-export function createOllamaAccount(opts: {
-  name: string;
-  session_cookie: string;
-  show_session?: boolean;
-  show_weekly?: boolean;
-  enabled?: boolean;
-}): OllamaAccountRow {
-  const accountId = randomUUID();
-  const now = nowIso();
-  getDb()
-    .prepare(
-      `INSERT INTO ollama_accounts (
-        id, name, session_cookie, show_session, show_weekly, enabled, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
-      accountId,
-      opts.name,
-      encryptSecret(opts.session_cookie),
-      opts.show_session !== false ? 1 : 0,
-      opts.show_weekly !== false ? 1 : 0,
-      opts.enabled !== false ? 1 : 0,
-      now,
-      now,
-    );
-  const account = getOllamaAccount(accountId);
-  if (!account) throw new Error('failed to create ollama account');
-  return account;
-}
-
-export function updateOllamaAccount(
-  accountId: string,
-  fields: Record<string, unknown>,
-): OllamaAccountRow | null {
-  const allowed = new Set(['name', 'session_cookie', 'show_session', 'show_weekly', 'enabled']);
-  const updates: string[] = [];
-  const values: unknown[] = [];
-  for (const [key, value] of Object.entries(fields)) {
-    if (!allowed.has(key) || value === undefined || value === null) continue;
-    let v = value;
-    if (['show_session', 'show_weekly', 'enabled'].includes(key)) {
-      v = value ? 1 : 0;
-    }
-    if (key === 'session_cookie') {
-      v = encryptSecret(String(v));
-    }
-    updates.push(`${key} = ?`);
-    values.push(v);
-  }
-  if (updates.length === 0) return getOllamaAccount(accountId);
-  updates.push('updated_at = ?');
-  values.push(nowIso());
-  values.push(accountId);
-  const result = getDb()
-    .prepare(`UPDATE ollama_accounts SET ${updates.join(', ')} WHERE id = ?`)
-    .run(...values);
-  if (result.changes === 0) return null;
-  return getOllamaAccount(accountId);
-}
-
-export function deleteOllamaAccount(accountId: string): boolean {
-  const result = getDb().prepare('DELETE FROM ollama_accounts WHERE id = ?').run(accountId);
   return result.changes > 0;
 }
 
@@ -1130,11 +1026,5 @@ export function opencodeModelTokenStats(
 export function countOpencodeAccounts(): number {
   return Number(
     (getDb().prepare('SELECT COUNT(*) AS c FROM opencode_accounts').get() as { c: number }).c,
-  );
-}
-
-export function countOllamaAccounts(): number {
-  return Number(
-    (getDb().prepare('SELECT COUNT(*) AS c FROM ollama_accounts').get() as { c: number }).c,
   );
 }

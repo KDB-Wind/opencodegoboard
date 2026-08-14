@@ -13,18 +13,6 @@ export interface OpenCodeAccount {
   updated_at: string;
 }
 
-export interface OllamaAccount {
-  id: string;
-  name: string;
-  session_cookie_masked: string;
-  configured: boolean;
-  show_session: boolean;
-  show_weekly: boolean;
-  enabled: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface QuotaWindow {
   label: string;
   used: number;
@@ -60,25 +48,6 @@ export interface Overview {
       windows: QuotaWindow[];
     }>;
   };
-  ollama: {
-    total_remaining_pro: number;
-    total_capacity_pro: number;
-    account_count: number;
-    success_count: number;
-    accounts: Array<{
-      account_id: string;
-      name: string;
-      plan: string;
-      multiplier: number;
-      remaining_pro: number;
-      capacity_pro: number;
-      success: boolean;
-    }>;
-  };
-  ollama_models: Array<{
-    model: string;
-    requests: number;
-  }>;
 }
 
 export interface DailyStat {
@@ -190,7 +159,6 @@ export interface UsageDataHealth {
 
 export interface ServiceConfig {
   refresh: {
-    ollama: { auto_refresh: boolean; interval_sec: number };
     opencode_go: { auto_refresh: boolean; interval_sec: number };
   };
   usage_sync: {
@@ -201,5 +169,4 @@ export interface ServiceConfig {
   };
   accounts_imported: boolean;
   opencode_accounts: OpenCodeAccount[];
-  ollama_accounts: OllamaAccount[];
 }

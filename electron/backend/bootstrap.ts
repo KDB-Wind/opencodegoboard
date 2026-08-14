@@ -19,7 +19,7 @@ export function ensureSettingsMigrated(): void {
 export function ensureAccountsImported(): void {
   const flag = db.importedFlagPath();
   if (fs.existsSync(flag)) return;
-  if (db.countOpencodeAccounts() > 0 || db.countOllamaAccounts() > 0) {
+  if (db.countOpencodeAccounts() > 0) {
     fs.writeFileSync(flag, 'imported\n', 'utf-8');
     return;
   }
@@ -27,7 +27,7 @@ export function ensureAccountsImported(): void {
   const raw = readOptionalConfigRaw();
   if (!raw || Object.keys(raw).length === 0) return;
 
-  const [opencodeAccounts, ollamaAccounts] = parseAccountsFromRaw(raw);
+  const opencodeAccounts = parseAccountsFromRaw(raw);
 
   for (const account of opencodeAccounts) {
     if (!account.auth_cookie.trim()) continue;
@@ -41,17 +41,7 @@ export function ensureAccountsImported(): void {
     });
   }
 
-  for (const account of ollamaAccounts) {
-    if (!account.session_cookie.trim()) continue;
-    db.createOllamaAccount({
-      name: account.name,
-      session_cookie: account.session_cookie,
-      show_session: account.show_session,
-      show_weekly: account.show_weekly,
-    });
-  }
-
-  if (opencodeAccounts.length || ollamaAccounts.length) {
+  if (opencodeAccounts.length) {
     fs.writeFileSync(flag, 'imported\n', 'utf-8');
   }
 }

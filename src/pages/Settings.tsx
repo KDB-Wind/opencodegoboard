@@ -622,7 +622,6 @@ export function Settings() {
                 },
                 refresh: {
                   opencode_go: { auto_refresh: true, interval_sec: 60 },
-                  ollama: { auto_refresh: true, interval_sec: 300 },
                 },
               });
               setAutoSync(true);

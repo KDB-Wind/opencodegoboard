@@ -10,7 +10,6 @@ export const DEFAULT_LISTEN_PORT = 8788;
 
 export const DEFAULT_SETTINGS_PAYLOAD: Record<string, unknown> = {
   refresh: {
-    ollama: { auto_refresh: true, interval_sec: 300 },
     opencode_go: { auto_refresh: true, interval_sec: 60 },
   },
   usage_sync: {
@@ -33,13 +32,6 @@ export interface AccountConfig {
   show_monthly?: boolean;
 }
 
-export interface OllamaAccountConfig {
-  name: string;
-  session_cookie: string;
-  show_session?: boolean;
-  show_weekly?: boolean;
-}
-
 export interface RefreshSettings {
   auto_refresh: boolean;
   interval_sec: number;
@@ -59,7 +51,6 @@ export interface UsageSyncSettings {
 export interface ServiceConfig {
   listen_host: string;
   listen_port: number;
-  refresh_ollama: RefreshSettings;
   refresh_opencode_go: RefreshSettings;
   opencode: OpenCodeSettings;
   usage_sync: UsageSyncSettings;
@@ -276,7 +267,6 @@ export function loadServiceConfig(): ServiceConfig {
   return {
     listen_host,
     listen_port,
-    refresh_ollama: parseRefreshSettings(refreshRaw.ollama, 300),
     refresh_opencode_go: parseRefreshSettings(refreshRaw.opencode_go, 60),
     opencode: parseOpenCodeSettings(settings.opencode),
     usage_sync: parseUsageSyncSettings(settings.usage_sync),
@@ -344,17 +334,14 @@ export function updateServiceConfig(updates: Record<string, unknown>): ServiceCo
 
 export function parseAccountsFromRaw(
   raw: Record<string, unknown>,
-): [AccountConfig[], OllamaAccountConfig[]] {
+): AccountConfig[] {
   let opencodeRaw: unknown[] = [];
-  let ollamaRaw: unknown[] = [];
   const importBlock = raw.import_accounts;
   if (importBlock && typeof importBlock === 'object') {
     const ib = importBlock as Record<string, unknown>;
     opencodeRaw = (ib.opencode_accounts as unknown[]) || [];
-    ollamaRaw = (ib.ollama_accounts as unknown[]) || [];
   } else {
     opencodeRaw = (raw.opencode_accounts as unknown[]) || [];
-    ollamaRaw = (raw.ollama_accounts as unknown[]) || [];
   }
 
   const opencode_accounts: AccountConfig[] = [];
@@ -371,19 +358,7 @@ export function parseAccountsFromRaw(
     });
   });
 
-  const ollama_accounts: OllamaAccountConfig[] = [];
-  ollamaRaw.forEach((item, i) => {
-    if (!item || typeof item !== 'object') return;
-    const o = item as Record<string, unknown>;
-    ollama_accounts.push({
-      name: String(o.name || `ollama-${i + 1}`),
-      session_cookie: String(o.session_cookie || '').trim(),
-      show_session: o.show_session !== false,
-      show_weekly: o.show_weekly !== false,
-    });
-  });
-
-  return [opencode_accounts, ollama_accounts];
+  return opencode_accounts;
 }
 
 function maskSecret(value: string, prefix: string): string {
@@ -407,20 +382,4 @@ export function maskCookie(cookie: string): string {
     }
   }
   return maskSecret(auth, 'auth=');
-}
-
-export function maskOllamaCookie(cookie: string): string {
-  let value = cookie.trim();
-  if (!value) return '';
-  if (value.toLowerCase().startsWith('cookie:')) value = value.slice(7).trim();
-  if (value.includes('__Secure-session=')) {
-    for (const part of value.split(';')) {
-      const p = part.trim();
-      if (p.startsWith('__Secure-session=')) {
-        return maskSecret(p.slice(17), '__Secure-session=');
-      }
-    }
-  }
-  if (!value.includes('=')) return maskSecret(value, '__Secure-session=');
-  return 'cookie=****';
 }

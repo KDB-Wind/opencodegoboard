@@ -85,7 +85,6 @@ opencodeboard/
 │       ├── db.ts          # SQLite CRUD
 │       ├── config.ts      # 配置/脱敏
 │       ├── quota.ts       # OpenCode 配额获取
-│       ├── ollama-quota.ts # Ollama 配额获取
 │       ├── opencode-usage.ts # 用量记录获取
 │       ├── usage-sync.ts  # 增量/回填同步
 │       ├── analytics.ts   # 总览聚合
