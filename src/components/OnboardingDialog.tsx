@@ -1,15 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from './ThemeProvider';
+import { useFeatureFlags } from './FeatureFlagsProvider';
+import { useToast } from './Toast';
 import { desktop } from '../lib/desktop';
 
 const ONBOARDING_KEY = 'opencodeboard-onboarded';
 
 export function OnboardingDialog() {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [show, setShow] = useState(false);
   const { theme, setTheme } = useTheme();
   const [tray, setTray] = useState(true);
+  const [mode, setMode] = useState<'minimal' | 'full'>('minimal');
+  const { applyPreset } = useFeatureFlags();
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -22,10 +27,15 @@ export function OnboardingDialog() {
   }, []);
 
   const handleFinish = async () => {
-    localStorage.setItem(ONBOARDING_KEY, '1');
-    if (tray) await desktop.setTrayMode(true);
-    ref.current?.close();
-    setShow(false);
+    try {
+      await applyPreset(mode);
+      localStorage.setItem(ONBOARDING_KEY, '1');
+      if (tray) await desktop.setTrayMode(true);
+      ref.current?.close();
+      setShow(false);
+    } catch (error) {
+      toast(t('features.saveFailed', { msg: String(error instanceof Error ? error.message : error) }), 'error');
+    }
   };
 
   if (!show) return null;
@@ -37,6 +47,22 @@ export function OnboardingDialog() {
         <p className="text-xs text-base-content/50 mb-6">{t('onboarding.subtitle')}</p>
 
         <div className="space-y-5">
+          <div>
+            <div className="text-sm font-medium text-base-content/80 mb-2">{t('onboarding.modeLabel')}</div>
+            <p className="text-[11px] text-base-content/40 mb-2">{t('onboarding.modeDesc')}</p>
+            <div className="flex gap-2">
+              {(['minimal', 'full'] as const).map((m) => (
+                <button
+                  key={m}
+                  className={`btn btn-sm flex-1 ${mode === m ? 'btn-primary' : 'btn-ghost'}`}
+                  onClick={() => setMode(m)}
+                >
+                  {m === 'minimal' ? t('onboarding.modeMinimal') : t('onboarding.modeFull')}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div>
             <div className="text-sm font-medium text-base-content/80 mb-2">{t('onboarding.themeLabel')}</div>
             <div className="flex gap-2">

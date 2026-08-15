@@ -5,6 +5,8 @@ import { api } from '../api/client';
 import { SyncProgressBar } from '../components/SyncProgress';
 import { useToast } from '../components/Toast';
 import { useTheme } from '../components/ThemeProvider';
+import { useFeatureFlags } from '../components/FeatureFlagsProvider';
+import { detectFeaturePreset, FEATURE_KEYS, type FeatureKey } from '../lib/featureFlags';
 import { About } from './About';
 import type { OpenCodeAccount } from '../api/types';
 import { loadQuotaNotificationSettings, saveQuotaNotificationSettings, type NotificationThreshold } from '../lib/quotaNotifications';
@@ -120,6 +122,32 @@ export function Settings() {
       toast(t('settings.toastTimezoneFailed', { msg: (error as Error).message }), 'error');
     }
   };
+
+  const setFeature = async (key: FeatureKey, enabled: boolean) => {
+    if (savingFeatures) return;
+    setSavingFeatures(true);
+    try {
+      await updateFlags({ ...flags, [key]: enabled });
+      toast(t('features.saved'), 'success');
+    } catch (error) {
+      toast(t('features.saveFailed', { msg: (error as Error).message }), 'error');
+    } finally {
+      setSavingFeatures(false);
+    }
+  };
+
+  const applyFeaturePreset = async (preset: 'minimal' | 'full') => {
+    if (savingFeatures) return;
+    setSavingFeatures(true);
+    try {
+      await applyPreset(preset);
+      toast(t('features.saved'), 'success');
+    } catch (error) {
+      toast(t('features.saveFailed', { msg: (error as Error).message }), 'error');
+    } finally {
+      setSavingFeatures(false);
+    }
+  };
   const [trayMode, setTrayMode] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<OpenCodeAccount | null>(null);
   const [editingAccount, setEditingAccount] = useState<OpenCodeAccount | null>(null);
@@ -127,6 +155,9 @@ export function Settings() {
   const deleteModal = useRef<HTMLDialogElement>(null);
   const restoreInput = useRef<HTMLInputElement>(null);
   const { theme, setTheme, readability, setReadability } = useTheme();
+  const { flags, applyPreset, updateFlags } = useFeatureFlags();
+  const featurePreset = detectFeaturePreset(flags);
+  const [savingFeatures, setSavingFeatures] = useState(false);
   const [language, setLanguageState] = useState<'zh' | 'en' | 'auto'>(() => {
     const stored = localStorage.getItem('opencodeboard-language');
     if (stored === 'zh' || stored === 'en') return stored;
@@ -381,6 +412,54 @@ export function Settings() {
         <p className="text-xs text-base-content/40 mt-1">{t('settings.subtitle')}</p>
       </div>
 
+      {/* -- 功能模式 -- */}
+      <div className="border border-base-200 rounded-xl p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold text-base-content/70">{t('features.sectionTitle')}</h2>
+          <div className="flex items-center gap-2">
+            <span className={`badge badge-sm ${featurePreset === 'custom' ? 'badge-ghost' : 'badge-primary'}`}>
+              {featurePreset === 'minimal'
+                ? t('features.presetMinimal')
+                : featurePreset === 'full'
+                ? t('features.presetFull')
+                : t('features.presetCustom')}
+            </span>
+            <button
+              className={`btn btn-sm ${featurePreset === 'minimal' ? 'btn-primary' : 'btn-ghost'}`}
+              disabled={savingFeatures}
+              onClick={() => void applyFeaturePreset('minimal')}
+            >
+              {t('features.presetMinimal')}
+            </button>
+            <button
+              className={`btn btn-sm ${featurePreset === 'full' ? 'btn-primary' : 'btn-ghost'}`}
+              disabled={savingFeatures}
+              onClick={() => void applyFeaturePreset('full')}
+            >
+              {t('features.presetFull')}
+            </button>
+          </div>
+        </div>
+        <p className="text-xs text-muted mb-3">{t('features.sectionDesc')}</p>
+        <div className="divide-y divide-base-200">
+          {FEATURE_KEYS.map((key) => (
+            <div key={key} className="flex items-center justify-between py-3">
+              <div className="min-w-0 pr-4">
+                <div className="text-sm text-base-content/70">{t(`features.${key}`)}</div>
+                <div className="text-[11px] text-base-content/40 mt-0.5">{t(`features.${key}Desc`)}</div>
+              </div>
+              <input
+                type="checkbox"
+                className="toggle toggle-sm shrink-0"
+                checked={flags[key]}
+                disabled={savingFeatures}
+                onChange={(event) => void setFeature(key, event.target.checked)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* -- 语言 -- */}
       <div className="border border-base-200 rounded-xl p-4">
         <h2 className="text-sm font-bold text-base-content/70 mb-4">{t('settings.language')}</h2>
@@ -475,6 +554,7 @@ export function Settings() {
             onChange={(e) => handleTrayChange(e.target.checked)}
           />
         </div>
+        {flags.quota_intelligence && (
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-base-200">
           <div>
             <div className="text-sm text-base-content/70">{t('settings.quotaNotifications')}</div>
@@ -488,6 +568,7 @@ export function Settings() {
             <input type="checkbox" className="toggle toggle-sm" checked={quotaNotifications.enabled} onChange={(event) => void setNotificationEnabled(event.target.checked)} />
           </div>
         </div>
+        )}
       </div>
 
       {/* -- 账户 -- */}
@@ -542,7 +623,9 @@ export function Settings() {
                   ) : (
                     <>
                       <button className="btn btn-xs btn-ghost" onClick={() => doSync(account.id, 'sync')}>{t('settings.sync')}</button>
-                      <button className="btn btn-xs btn-ghost" onClick={() => doSync(account.id, 'backfill')}>{t('settings.backfill')}</button>
+                      {flags.advanced_sync && (
+                        <button className="btn btn-xs btn-ghost" onClick={() => doSync(account.id, 'backfill')}>{t('settings.backfill')}</button>
+                      )}
                     </>
                   )}
                   <button
@@ -581,6 +664,7 @@ export function Settings() {
             />
           </div>
 
+          {flags.advanced_sync && (
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm text-base-content/70">{t('settings.syncInterval')}</div>
@@ -597,6 +681,7 @@ export function Settings() {
               <option value={1800}>{t('settings.min30')}</option>
             </select>
           </div>
+          )}
 
           <button className="btn btn-primary btn-sm" onClick={saveSyncSettings}>
             {t('settings.saveSyncSettings')}
@@ -605,6 +690,7 @@ export function Settings() {
       </div>
 
       {/* -- 历史回填 -- */}
+      {flags.advanced_sync && (
       <div className="border border-base-200 rounded-xl p-4">
         <h2 className="text-sm font-bold text-base-content/70 mb-4">{t('settings.backfillSection')}</h2>
         <div className="space-y-4">
@@ -627,12 +713,16 @@ export function Settings() {
           {backfillMode === 'until' && <input className="input input-bordered input-sm w-40 ml-auto block" type="date" value={backfillUntil} onChange={(e) => setBackfillUntil(e.target.value)} />}
         </div>
       </div>
+      )}
 
+      {flags.data_tools && (
       <div className="border border-base-200 rounded-xl p-4" id="backend-status">
         <h2 className="text-sm font-bold text-base-content/70 mb-4">{t('settings.backend')}</h2>
         <BackendStatus />
       </div>
+      )}
 
+      {flags.data_tools && (
       <div className="border border-base-200 rounded-xl p-4">
         <h2 className="text-sm font-bold text-base-content/70 mb-2">{t('settings.dataManagement')}</h2>
         <p className="text-xs text-muted mb-4">{t('settings.dataManagementDesc')}</p>
@@ -644,12 +734,16 @@ export function Settings() {
           <input ref={restoreInput} type="file" accept=".db,.sqlite,.sqlite3" className="hidden" onChange={(event) => restoreBackup(event.target.files?.[0])} />
         </div>
       </div>
+      )}
 
       <div className="border border-base-200 rounded-xl p-4">
         <About />
+        {flags.data_tools && (
         <button className="btn btn-outline btn-sm mt-4" disabled={checkingUpdate} onClick={async()=>{setCheckingUpdate(true);try{const installed=await desktop.installUpdate();toast(t(installed?'settings.updateInstalled':'settings.noUpdate'),'info');}catch(error){toast(t('settings.updateFailed',{msg:(error as Error).message}),'error');}finally{setCheckingUpdate(false)}}}>{checkingUpdate?<span className="loading loading-spinner loading-xs"/>:t('settings.checkUpdates')}</button>
+        )}
       </div>
 
+      {flags.advanced_sync && (
       <div className="border border-base-200 rounded-xl p-4 space-y-3">
         <h2 className="text-sm font-bold text-base-content/70">{t('settings.explanation')}</h2>
 
@@ -677,6 +771,7 @@ export function Settings() {
           </div>
         </div>
       </div>
+      )}
 
       {/* -- 恢复默认 -- */}
       <div className="border border-base-200 rounded-xl p-4">
