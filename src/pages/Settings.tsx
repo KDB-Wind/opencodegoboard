@@ -102,6 +102,7 @@ export function Settings() {
   }, [config]);
   const [trayMode, setTrayMode] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<OpenCodeAccount | null>(null);
+  const [editingAccount, setEditingAccount] = useState<OpenCodeAccount | null>(null);
   const addModal = useRef<HTMLDialogElement>(null);
   const deleteModal = useRef<HTMLDialogElement>(null);
   const restoreInput = useRef<HTMLInputElement>(null);
@@ -146,7 +147,15 @@ export function Settings() {
   const accounts = config?.opencode_accounts ?? [];
 
   const openAdd = () => {
+    setEditingAccount(null);
     setForm({ name: '', auth_cookie: '', workspace_id: 'Default' });
+    setSystemLoginOpened(false);
+    addModal.current?.showModal();
+  };
+
+  const openEdit = (account: OpenCodeAccount) => {
+    setEditingAccount(account);
+    setForm({ name: account.name, auth_cookie: '', workspace_id: account.workspace_id || 'Default' });
     setSystemLoginOpened(false);
     addModal.current?.showModal();
   };
@@ -161,15 +170,23 @@ export function Settings() {
   };
 
   const handleAdd = async () => {
-    if (!form.name || !form.auth_cookie) return;
+    if (!form.name || (!editingAccount?.configured && !form.auth_cookie)) return;
     setSaving(true);
     try {
-      await api.createOpenCodeAccount(form);
-      toast(t('settings.toastAccountAdded'), 'success');
+      if (editingAccount) {
+        const update: Record<string, unknown> = { name: form.name, workspace_id: form.workspace_id };
+        if (form.auth_cookie) update.auth_cookie = form.auth_cookie;
+        await api.updateOpenCodeAccount(editingAccount.id, update);
+        toast(t('settings.toastAccountUpdated'), 'success');
+      } else {
+        await api.createOpenCodeAccount(form);
+        toast(t('settings.toastAccountAdded'), 'success');
+      }
       addModal.current?.close();
+      setEditingAccount(null);
       refetch();
     } catch (e) {
-      toast(t('settings.toastAddFailed', { msg: (e as Error).message }), 'error');
+      toast(t('settings.toastSaveFailed', { msg: (e as Error).message }), 'error');
     } finally {
       setSaving(false);
     }
@@ -495,6 +512,12 @@ export function Settings() {
                     </>
                   )}
                   <button
+                    className="btn btn-xs btn-ghost"
+                    onClick={() => openEdit(account)}
+                  >
+                    {account.configured ? t('settings.edit') : t('settings.reauthorize')}
+                  </button>
+                  <button
                     className="btn btn-xs btn-ghost text-error"
                     onClick={() => confirmDelete(account)}
                   >
@@ -658,7 +681,7 @@ export function Settings() {
 
       <dialog ref={addModal} className="modal">
         <div className="modal-box max-w-md">
-          <h3 className="font-semibold text-base mb-4">{t('settings.addAccountDialog')}</h3>
+          <h3 className="font-semibold text-base mb-4">{t(editingAccount ? 'settings.editAccountDialog' : 'settings.addAccountDialog')}</h3>
           <div className="space-y-4">
             <button
               className="btn btn-outline btn-sm w-full"
@@ -706,21 +729,22 @@ export function Settings() {
                 value={form.auth_cookie}
                 onChange={(e) => setForm({ ...form, auth_cookie: e.target.value })}
               />
+              {editingAccount?.configured && !form.auth_cookie && <p className="text-xs text-base-content/50 mt-1">{t('settings.cookieKeepHint')}</p>}
             </div>
           </div>
           <div className="modal-action">
-            <button className="btn btn-sm" onClick={() => addModal.current?.close()}>{t('common.cancel')}</button>
+            <button className="btn btn-sm" onClick={() => { addModal.current?.close(); setEditingAccount(null); }}>{t('common.cancel')}</button>
             <button
               className="btn btn-primary btn-sm"
               onClick={handleAdd}
-              disabled={saving || !form.name || !form.auth_cookie}
+              disabled={saving || !form.name || (!editingAccount?.configured && !form.auth_cookie)}
             >
               {saving ? <span className="loading loading-spinner loading-xs" /> : t('common.save')}
             </button>
           </div>
         </div>
         <form method="dialog" className="modal-backdrop">
-          <button>close</button>
+          <button onClick={() => setEditingAccount(null)}>close</button>
         </form>
       </dialog>
 
