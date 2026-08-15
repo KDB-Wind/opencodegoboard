@@ -14,6 +14,7 @@ const PERIOD_MAP: Record<TimeRange, string> = {
   '7d': '7d',
   '30d': '30d',
   all: 'all',
+  custom: '30d',
 };
 
 const TREND_DAYS: Record<TimeRange, number> = {
@@ -21,11 +22,40 @@ const TREND_DAYS: Record<TimeRange, number> = {
   '7d': 7,
   '30d': 30,
   all: 365,
+  custom: 0,
 };
+
+const CUSTOM_FROM_KEY = 'opencodeboard.customFrom';
+const CUSTOM_TO_KEY = 'opencodeboard.customTo';
+
+function localDateString(offsetDays: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function isDateString(value: string | null): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function getStoredCustomRange(): { from: string; to: string } {
+  const fallback = { from: localDateString(-1), to: localDateString(-1) };
+  if (typeof window === 'undefined') return fallback;
+  const from = window.localStorage.getItem(CUSTOM_FROM_KEY);
+  const to = window.localStorage.getItem(CUSTOM_TO_KEY);
+  if (isDateString(from) && isDateString(to) && from <= to) return { from, to };
+  return fallback;
+}
+
+function storeCustomRange(range: { from: string; to: string }) {
+  window.localStorage.setItem(CUSTOM_FROM_KEY, range.from);
+  window.localStorage.setItem(CUSTOM_TO_KEY, range.to);
+}
 
 export function TokenStats() {
   const { t } = useTranslation();
   const [range, setRange] = useState<TimeRange>(getStoredTimeRange);
+  const [customRange, setCustomRange] = useState(getStoredCustomRange);
   const [accountId, setAccountId] = useState('');
   const [model, setModel] = useState('');
   const [mode, setMode] = useState<'cost' | 'requests' | 'tokens' | 'compare'>('cost');
@@ -34,21 +64,28 @@ export function TokenStats() {
     storeTimeRange(range);
   }, [range]);
 
+  useEffect(() => {
+    storeCustomRange(customRange);
+  }, [customRange]);
+
   const { data: accounts } = usePolling((signal) => api.listOpenCodeAccounts(signal), 120000);
 
   const aid = accountId || undefined;
+  const custom = range === 'custom';
+  const customFrom = custom ? customRange.from : undefined;
+  const customTo = custom ? customRange.to : undefined;
   const { data: modelTokens } = usePolling(
-    (signal) => api.getModelTokenStats(1, aid, PERIOD_MAP[range], signal),
+    (signal) => api.getModelTokenStats(1, aid, custom ? undefined : PERIOD_MAP[range], signal, customFrom, customTo),
     60000,
     true,
-    [range, aid],
+    [range, aid, customRange.from, customRange.to],
   );
 
   const { data: trendData } = usePolling(
-    (signal) => api.getDailyStats(TREND_DAYS[range], aid, signal),
+    (signal) => api.getDailyStats(TREND_DAYS[range], aid, signal, customFrom, customTo),
     60000,
     range !== 'today',
-    [range, aid],
+    [range, aid, customRange.from, customRange.to],
   );
   const { data: hourlyData } = usePolling(
     (signal) => api.getHourlyStats(aid, signal),
@@ -111,7 +148,31 @@ export function TokenStats() {
               <option key={m} value={m}>{m}</option>
             ))}
           </select>
-          <TimeRangeTabs value={range} onChange={setRange} />
+          <TimeRangeTabs value={range} onChange={setRange} allowCustom />
+          {range === 'custom' && (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                className="input input-bordered input-sm w-36"
+                aria-label={t('timeRange.customFrom')}
+                value={customRange.from}
+                max={customRange.to}
+                onChange={(e) => setCustomRange((prev) => {
+                  const from = e.target.value || prev.from;
+                  return { from, to: from > prev.to ? from : prev.to };
+                })}
+              />
+              <span className="text-xs text-muted">→</span>
+              <input
+                type="date"
+                className="input input-bordered input-sm w-36"
+                aria-label={t('timeRange.customTo')}
+                value={customRange.to}
+                min={customRange.from}
+                onChange={(e) => setCustomRange((prev) => ({ ...prev, to: e.target.value || prev.to }))}
+              />
+            </div>
+          )}
         </div>
       </div>
 

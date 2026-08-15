@@ -1,13 +1,15 @@
 import { useTranslation } from 'react-i18next';
 
-export type TimeRange = 'today' | '7d' | '30d' | 'all';
+export type TimeRange = 'today' | '7d' | '30d' | 'all' | 'custom';
 
 export const TIME_RANGE_STORAGE_KEY = 'opencodeboard.timeRange';
 
 export function getStoredTimeRange(): TimeRange {
   if (typeof window === 'undefined') return '30d';
   const value = window.localStorage.getItem(TIME_RANGE_STORAGE_KEY);
-  return value === 'today' || value === '7d' || value === '30d' || value === 'all' ? value : '30d';
+  return value === 'today' || value === '7d' || value === '30d' || value === 'all' || value === 'custom'
+    ? value
+    : '30d';
 }
 
 export function storeTimeRange(value: TimeRange) {
@@ -18,6 +20,7 @@ interface TimeRangeTabsProps {
   value: TimeRange;
   onChange: (value: TimeRange) => void;
   size?: 'sm' | 'xs';
+  allowCustom?: boolean;
 }
 
 const OPTIONS: { value: TimeRange; i18nKey: string }[] = [
@@ -25,14 +28,16 @@ const OPTIONS: { value: TimeRange; i18nKey: string }[] = [
   { value: '7d', i18nKey: 'timeRange.7days' },
   { value: '30d', i18nKey: 'timeRange.30days' },
   { value: 'all', i18nKey: 'timeRange.all' },
+  { value: 'custom', i18nKey: 'timeRange.custom' },
 ];
 
-export function TimeRangeTabs({ value, onChange, size = 'sm' }: TimeRangeTabsProps) {
+export function TimeRangeTabs({ value, onChange, size = 'sm', allowCustom = false }: TimeRangeTabsProps) {
   const { t } = useTranslation();
   const compact = size === 'xs';
+  const options = allowCustom ? OPTIONS : OPTIONS.filter((option) => option.value !== 'custom');
   return (
     <div className={`inline-flex items-center gap-0.5 rounded-lg bg-base-200 ${compact ? 'p-0.5' : 'p-1'}`}>
-      {OPTIONS.map((o) => (
+      {options.map((o) => (
         <button
           key={o.value}
           type="button"
