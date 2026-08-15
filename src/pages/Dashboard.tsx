@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api/client';
+import { useFeatureFlags } from '../components/FeatureFlagsProvider';
 import { ModelIcon } from '../components/ModelIcon';
 import { UsageTable } from '../components/UsageTable';
 import { TokenBreakdownTooltip } from '../components/TokenBreakdownTooltip';
@@ -158,6 +159,7 @@ function ModelDonut({ models: raw }: { models: { model: string; total_input_toke
 export function Dashboard() {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
+  const { flags } = useFeatureFlags();
   const [topPeriod, setTopPeriod] = useState<TimeRange>(getStoredTimeRange);
   const [syncing, setSyncing] = useState(false);
   useEffect(() => {
@@ -174,7 +176,7 @@ export function Dashboard() {
   const { data: topData, refetch: refetchTop } = usePolling(
     (signal) => api.getModelTokenStats(1, undefined, topPeriod, signal),
     60000,
-    true,
+    flags.token_stats,
     [topPeriod],
   );
 
@@ -188,8 +190,10 @@ export function Dashboard() {
         try {
           const synced = await api.syncUsage(account.id);
           total += synced.inserted ?? 0;
-          const backfilled = await api.backfillUsage(account.id, { mode: 'days', days: 90 });
-          total += backfilled.inserted ?? 0;
+          if (flags.advanced_sync) {
+            const backfilled = await api.backfillUsage(account.id, { mode: 'days', days: 90 });
+            total += backfilled.inserted ?? 0;
+          }
         } catch (err) {
           toast(t('dashboard.syncFailed', { error: String(err instanceof Error ? err.message : err) }), 'error');
         }
@@ -237,7 +241,7 @@ export function Dashboard() {
     );
     const totalCost = tokens.reduce((s, m) => s + m.total_cost_usd, 0);
     const quotaUnits = data?.quota_units?.total_quota_units;
-    return [
+    const cards = [
       { label: t('dashboard.account'), value: overview?.account_count ?? '-', sub: t('dashboard.availableBlocked', { available: overview?.success_count ?? 0, blocked: overview?.blocked_count ?? 0 }), breakdown: null, size: 'sm' },
       { label: t('dashboard.bottleneckQuota'), value: overview?.bottleneck ? `${overview.bottleneck.remaining}%` : '-', sub: overview?.bottleneck ? `${overview.bottleneck.name} · ${overview.bottleneck.window}` : t('dashboard.noBottleneck'), breakdown: null, size: 'sm' },
       {
@@ -264,15 +268,18 @@ export function Dashboard() {
         breakdown: null,
         size: 'md',
       },
-      {
+    ];
+    if (flags.quota_intelligence) {
+      cards.push({
         label: t('dashboard.quotaUnits'),
         value: quotaUnits == null ? '-' : quotaUnits.toFixed(2),
         sub: t('dashboard.quotaUnitsDesc'),
         breakdown: null,
         size: 'md',
-      },
-    ];
-  }, [overview, tokens, todayTokens, data?.quota_units?.total_quota_units, t, i18n.language, timezone]);
+      });
+    }
+    return cards;
+  }, [overview, tokens, todayTokens, data?.quota_units?.total_quota_units, flags.quota_intelligence, t, i18n.language, timezone]);
 
   if (loading && !data) {
     return (
@@ -292,7 +299,7 @@ export function Dashboard() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-bold">{t('dashboard.title')}</h1>
         <button className="btn btn-primary btn-sm" onClick={handleSyncAll} disabled={syncing}>
-          {syncing ? t('dashboard.syncing') : t('dashboard.syncAll')}
+          {syncing ? t('dashboard.syncing') : flags.advanced_sync ? t('dashboard.syncAll') : t('dashboard.syncOnly')}
         </button>
       </div>
 
@@ -313,7 +320,7 @@ export function Dashboard() {
         </div>
       )}
 
-      {(recommendation?.account || recommendation?.model) && (
+      {flags.quota_intelligence && (recommendation?.account || recommendation?.model) && (
         <div className="alert border-primary/30 bg-primary/5 py-3" role="status">
           <div>
             <div className="font-semibold">{t('dashboard.recommendationTitle')}</div>
@@ -347,6 +354,7 @@ export function Dashboard() {
         ))}
       </div>
 
+      {flags.quota_intelligence && (
       <div className="border border-base-200 rounded-xl p-4">
         <div className="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-3">{t('dashboard.enduranceTitle')}</div>
         {quotaIntelligence.length === 0 ? (
@@ -384,8 +392,9 @@ export function Dashboard() {
           </div>
         )}
       </div>
+      )}
 
-      {reconciliationEvents.length > 0 && (
+      {flags.quota_intelligence && reconciliationEvents.length > 0 && (
         <div className="border border-base-200 rounded-xl p-4">
           <div className="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-3">{t('dashboard.reconciliationTitle')}</div>
           <div className="space-y-2">
@@ -400,8 +409,8 @@ export function Dashboard() {
         </div>
       )}
 
-      <div className="flex gap-4">
-        <div className="flex-1 border border-base-200 rounded-xl p-4 flex flex-col min-h-0">
+      <div className={flags.token_stats ? 'flex gap-4' : ''}>
+        <div className={`${flags.token_stats ? 'flex-1 ' : ''}border border-base-200 rounded-xl p-4 flex flex-col min-h-0`}>
           <div className="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-3 shrink-0">{t('dashboard.accountQuotaStatus')}</div>
           {quota.length === 0 ? (
             <div className="text-sm text-base-content/40 text-center py-6">{t('common.noData')}</div>
@@ -424,6 +433,7 @@ export function Dashboard() {
           </div>
         </div>
 
+        {flags.token_stats && (
         <div className="flex-1 border border-base-200 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs font-bold text-base-content/50 uppercase tracking-wider">{t('dashboard.modelTop3')}</div>
@@ -439,6 +449,7 @@ export function Dashboard() {
               : t('dashboard.noModelData')}
           </div>
         </div>
+        )}
       </div>
 
       <div className="border border-base-200 rounded-xl p-4">

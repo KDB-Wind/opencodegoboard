@@ -1,15 +1,19 @@
 import { memo } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useFeatureFlags } from './FeatureFlagsProvider';
+import type { FeatureKey } from '../lib/featureFlags';
 
 function useLinks() {
   const { t } = useTranslation();
-  return [
+  const { flags } = useFeatureFlags();
+  const links: Array<{ to: string; label: string; icon: string; feature?: FeatureKey }> = [
     { to: '/', label: t('nav.dashboard'), icon: 'grid' },
-    { to: '/tokens', label: t('nav.tokens'), icon: 'bar-chart' },
-    { to: '/records', label: t('nav.records'), icon: 'list' },
+    { to: '/tokens', label: t('nav.tokens'), icon: 'bar-chart', feature: 'token_stats' },
+    { to: '/records', label: t('nav.records'), icon: 'list', feature: 'usage_records' },
     { to: '/settings', label: t('nav.settings'), icon: 'settings' },
   ];
+  return links.filter((link) => !link.feature || flags[link.feature]);
 }
 
 const icons: Record<string, JSX.Element> = {

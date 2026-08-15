@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { TitleBar } from './TitleBar';
 import { Sidebar } from './Sidebar';
 import { OnboardingDialog } from './OnboardingDialog';
+import { LegacyModePrompt } from './LegacyModePrompt';
 import { useTranslation } from 'react-i18next';
 
 export function Layout() {
@@ -17,6 +18,7 @@ export function Layout() {
         <Sidebar />
         <main id="main-content" tabIndex={-1} className="flex-1 content-area" key={location.pathname}>
           <div className="p-6 page-enter">
+            <LegacyModePrompt />
             <Outlet />
           </div>
         </main>

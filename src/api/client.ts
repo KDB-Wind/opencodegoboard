@@ -89,8 +89,8 @@ export const api = {
     data_health: UsageDataHealth[];
     quota_intelligence: QuotaIntelligence[];
     quota_reconciliation: QuotaReconciliationEvent[];
-    quota_units: QuotaUnitStats;
-    recommendations: UsageRecommendation;
+    quota_units: QuotaUnitStats | null;
+    recommendations: UsageRecommendation | null;
     period: string;
     timezone: string;
   }>(`/dashboard?period=${period}`, signal),

@@ -41,8 +41,8 @@
     "model": "Model",
     "plan": "Plan",
     "minute": "min",
-    "seconds": "s"
-    ,"close": "Close"
+    "seconds": "s",
+    "close": "Close"
   },
   "timeRange": {
     "today": "Today",
@@ -82,41 +82,42 @@
     "syncFailed": "Sync failed: {{error}}",
     "dataHealthWarning": "Some local usage data may be incomplete",
     "failedPage": "page {{page}} failed",
-    "parseErrors": "{{count}} parse failures"
-    ,"enduranceTitle": "Quota endurance"
-    ,"enduranceNoSnapshots": "Waiting for quota snapshots"
-    ,"enduranceInsufficient": "Not enough snapshots to predict"
-    ,"enduranceCanLast": "Expected to last until reset"
-    ,"enduranceCannotLast": "Expected to run out early"
-    ,"enduranceHours": "~{{exhaust}}h to exhaust · reset in {{reset}}h"
-    ,"enduranceConfidence": "{{level}} confidence · {{count}} valid intervals"
-    ,"confidence_high": "High"
-    ,"confidence_medium": "Medium"
-    ,"confidence_low": "Low"
-    ,"confidence_insufficient": "Insufficient"
-    ,"safeBudget": "Safe budget {{budget}} quota units/day ({{reserve}}% reserve)"
-    ,"accelerationWarning": "Recent burn rate is {{ratio}}× the baseline"
-    ,"alert_safe": "Safe"
-    ,"alert_warning": "Watch"
-    ,"alert_critical": "Critical"
-    ,"alert_unknown": "Sampling"
-    ,"reconciliationTitle": "Quota change explanations"
-    ,"reconcile_reset": "Quota reset"
-    ,"reconcile_top_up": "Quota top-up"
-    ,"reconcile_snapshot_gap": "Snapshot gap"
-    ,"reconcile_missing_local_usage": "Local usage may be missing"
-    ,"reconcile_rule_change": "Quota rule changed"
-    ,"reconcile_matched": "Reconciled"
-    ,"quotaUnits": "Quota units consumed"
-    ,"quotaUnitsDesc": "Per 1M processed tokens × effective weight"
-    ,"bottleneckQuota": "Tightest quota window"
-    ,"noBottleneck": "No available window"
-    ,"recommendationTitle": "Current recommendation"
-    ,"recommendAccount": "Account: {{account}} ({{remaining}}% bottleneck remaining, {{reason}})"
-    ,"recommendModel": "Model: {{model}} (weight {{weight}})"
-    ,"reason_best_safe_headroom": "best safe headroom"
-    ,"reason_least_risk_among_critical": "all accounts are at risk; this is the least risky"
-    ,"notificationTitle": "OpenCode Go quota alert"
+    "parseErrors": "{{count}} parse failures",
+    "enduranceTitle": "Quota endurance",
+    "enduranceNoSnapshots": "Waiting for quota snapshots",
+    "enduranceInsufficient": "Not enough snapshots to predict",
+    "enduranceCanLast": "Expected to last until reset",
+    "enduranceCannotLast": "Expected to run out early",
+    "enduranceHours": "~{{exhaust}}h to exhaust · reset in {{reset}}h",
+    "enduranceConfidence": "{{level}} confidence · {{count}} valid intervals",
+    "confidence_high": "High",
+    "confidence_medium": "Medium",
+    "confidence_low": "Low",
+    "confidence_insufficient": "Insufficient",
+    "safeBudget": "Safe budget {{budget}} quota units/day ({{reserve}}% reserve)",
+    "accelerationWarning": "Recent burn rate is {{ratio}}× the baseline",
+    "alert_safe": "Safe",
+    "alert_warning": "Watch",
+    "alert_critical": "Critical",
+    "alert_unknown": "Sampling",
+    "reconciliationTitle": "Quota change explanations",
+    "reconcile_reset": "Quota reset",
+    "reconcile_top_up": "Quota top-up",
+    "reconcile_snapshot_gap": "Snapshot gap",
+    "reconcile_missing_local_usage": "Local usage may be missing",
+    "reconcile_rule_change": "Quota rule changed",
+    "reconcile_matched": "Reconciled",
+    "quotaUnits": "Quota units consumed",
+    "quotaUnitsDesc": "Per 1M processed tokens × effective weight",
+    "bottleneckQuota": "Tightest quota window",
+    "noBottleneck": "No available window",
+    "recommendationTitle": "Current recommendation",
+    "recommendAccount": "Account: {{account}} ({{remaining}}% bottleneck remaining, {{reason}})",
+    "recommendModel": "Model: {{model}} (weight {{weight}})",
+    "reason_best_safe_headroom": "best safe headroom",
+    "reason_least_risk_among_critical": "all accounts are at risk; this is the least risky",
+    "notificationTitle": "OpenCode Go quota alert",
+    "syncOnly": "Sync Now"
   },
   "tokenStats": {
     "chartDescription": "{{mode}} trend chart with {{count}} data points",
@@ -174,14 +175,14 @@
     "session": "Session ID",
     "unassigned": "Unassigned records",
     "lastActive": "Last active",
-    "noSessions": "No sessions"
-    ,"project": "Project"
-    ,"linkProject": "Link"
-    ,"projectNamePrompt": "Project name"
-    ,"projectPathPrompt": "Local project directory"
-    ,"sessionTitlePrompt": "Session title"
-    ,"noProjectPath": "No directory linked"
-    ,"projectSummary": "Cost ${{cost}} · {{cache}}% cache · {{models}} models"
+    "noSessions": "No sessions",
+    "project": "Project",
+    "linkProject": "Link",
+    "projectNamePrompt": "Project name",
+    "projectPathPrompt": "Local project directory",
+    "sessionTitlePrompt": "Session title",
+    "noProjectPath": "No directory linked",
+    "projectSummary": "Cost ${{cost}} · {{cache}}% cache · {{models}} models"
   },
   "settings": {
     "title": "Settings",
@@ -282,7 +283,7 @@
     "oldUser": "Existing OpenCode Go users:",
     "oldUserDesc": "Add an account, first click \"Sync\" to pull latest data, then click \"Backfill\" to pull historical records. It is recommended to set backfill to 500~1000 pages first, then click the \"Backfill\" button next to the account. Once backfill is complete, the dashboard and stats pages will show full data.",
     "resetDefaults": "Reset Defaults",
-    "resetDesc": "Reset sync settings, refresh settings, etc. to initial values. Account data is not affected.",
+    "resetDesc": "Reset sync settings, refresh settings, etc. to initial values; account data and feature switches are not affected.",
     "resetButton": "Reset to Defaults",
     "addAccountDialog": "Add OpenCode Account",
     "editAccountDialog": "Edit / Reauthorize OpenCode Account",
@@ -355,11 +356,43 @@
     "themeLabel": "Interface Theme",
     "tray": "Minimize to System Tray",
     "trayDesc": "Hide to tray when closing window instead of quitting",
-    "start": "Get Started"
+    "start": "Get Started",
+    "modeLabel": "Interface Mode",
+    "modeDesc": "Minimal keeps only core quota and usage; more features can be enabled in Settings anytime.",
+    "modeMinimal": "Minimal",
+    "modeFull": "Full"
   },
   "syncProgress": {
     "done": "Done",
     "syncing": "Syncing...",
     "pages": "{{current}}/{{total}} pages"
+  },
+  "features": {
+    "sectionTitle": "Feature Mode",
+    "sectionDesc": "Minimal by default; enable more pages and advanced features as needed.",
+    "presetMinimal": "Minimal",
+    "presetFull": "Full",
+    "presetCustom": "Custom",
+    "presetMinimalDesc": "Keep only core quota, basic usage, and account management",
+    "presetFullDesc": "Show all pages and advanced analytics",
+    "presetCustomDesc": "Features combined according to your choices",
+    "token_stats": "Usage Stats",
+    "token_statsDesc": "Stats page and the model Top 3 chart on the dashboard",
+    "usage_records": "Usage Records",
+    "usage_recordsDesc": "Sessions, raw records, and project drill-down page",
+    "quota_intelligence": "Quota Intelligence & Alerts",
+    "quota_intelligenceDesc": "Endurance forecast, reconciliation, recommendations, quota units, and desktop alerts",
+    "data_tools": "Data & Diagnostic Tools",
+    "data_toolsDesc": "CSV export, backup and restore, diagnostics, backend status, and update checks",
+    "advanced_sync": "Advanced Sync",
+    "advanced_syncDesc": "History backfill and auto-sync interval settings",
+    "saved": "Feature settings saved",
+    "saveFailed": "Failed to save feature settings: {{msg}}"
+  },
+  "legacyPrompt": {
+    "title": "All features kept",
+    "desc": "This upgrade does not change your interface. You can switch to minimal mode anytime in Settings → Feature Mode.",
+    "keepFull": "Keep Full",
+    "tryMinimal": "Try Minimal"
   }
 }

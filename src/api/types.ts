@@ -265,6 +265,14 @@ export interface ServiceConfig {
     backfill_pages_per_request: number;
     max_pages_per_incremental: number;
   };
+  feature_flags: {
+    token_stats: boolean;
+    usage_records: boolean;
+    quota_intelligence: boolean;
+    data_tools: boolean;
+    advanced_sync: boolean;
+  };
+  feature_legacy_prompt_pending: boolean;
   accounts_imported: boolean;
   opencode_accounts: OpenCodeAccount[];
 }
