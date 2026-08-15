@@ -73,7 +73,7 @@ export function TitleBar() {
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         <div className={`flex items-center gap-2 ml-3 ${isWindows ? '' : 'order-2 mr-3'}`}>
-          <img src="logo.svg" className="h-[15px]" alt="OpenCodeBoard" />
+          <img src="logo.svg" className="h-[15px]" alt="OpenCodeGoBoard" />
           <span className="text-xs font-bold text-base-content/60 leading-4">{t('app.name')}</span>
           <span className="text-[11px] text-base-content/30 leading-4">{t('app.subtitle')}</span>
         </div>

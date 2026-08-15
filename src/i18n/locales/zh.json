@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "OpenCodeBoard",
+    "name": "OpenCodeGoBoard",
     "subtitle": "- OpenCode Go Board"
   },
   "nav": {
@@ -332,11 +332,11 @@
     "transportElectron": "Electron 本地 API"
   },
   "about": {
-    "title": "OpenCodeBoard",
+    "title": "OpenCodeGoBoard",
     "version": "v{{version}} · OpenCode Go 用量统计面板",
     "repo": "查看 GitHub 仓库",
-    "desc1": "OpenCodeBoard 是一个专为 OpenCode Go 平价 Coding Plan 设计的本地用量统计桌面应用。",
-    "desc2": "OpenCode AI 官方的用量页面数据分散、操作繁琐，难以直观掌握各模型的 Token 消耗和账户配额状态。OpenCodeBoard 通过后端定时同步数据，以清晰的图表和布局展示关键指标，让你一目了然。",
+    "desc1": "OpenCodeGoBoard 是一个专为 OpenCode Go 平价 Coding Plan 设计的本地用量统计桌面应用。",
+    "desc2": "OpenCode AI 官方的用量页面数据分散、操作繁琐，难以直观掌握各模型的 Token 消耗和账户配额状态。OpenCodeGoBoard 通过后端定时同步数据，以清晰的图表和布局展示关键指标，让你一目了然。",
     "features": "功能",
     "feature1": "多账户配额实时监控（5小时 / 7天 / 30天）",
     "feature2": "各模型 Token 消耗排行与每日趋势",
@@ -354,7 +354,7 @@
     "quitApp": "退出应用"
   },
   "onboarding": {
-    "welcome": "欢迎使用 OpenCodeBoard",
+    "welcome": "欢迎使用 OpenCodeGoBoard",
     "subtitle": "选择偏好的外观和系统行为",
     "themeLabel": "界面主题",
     "tray": "最小化到系统托盘",

@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "OpenCodeBoard",
+    "name": "OpenCodeGoBoard",
     "subtitle": "- OpenCode Go Board"
   },
   "nav": {
@@ -332,11 +332,11 @@
     "transportElectron": "Electron local API"
   },
   "about": {
-    "title": "OpenCodeBoard",
+    "title": "OpenCodeGoBoard",
     "version": "v{{version}} · OpenCode Go Usage Dashboard",
     "repo": "View GitHub Repository",
-    "desc1": "OpenCodeBoard is a local usage statistics desktop app designed for OpenCode Go affordable Coding Plans.",
-    "desc2": "OpenCode AI's official usage pages have scattered data and cumbersome operations, making it hard to grasp each model's token consumption and account quota status at a glance. OpenCodeBoard periodically syncs data through its backend, displaying key metrics with clear charts and layouts.",
+    "desc1": "OpenCodeGoBoard is a local usage statistics desktop app designed for OpenCode Go affordable Coding Plans.",
+    "desc2": "OpenCode AI's official usage pages have scattered data and cumbersome operations, making it hard to grasp each model's token consumption and account quota status at a glance. OpenCodeGoBoard periodically syncs data through its backend, displaying key metrics with clear charts and layouts.",
     "features": "Features",
     "feature1": "Multi-account real-time quota monitoring (5h / 7d / 30d)",
     "feature2": "Model token consumption ranking and daily trends",
@@ -354,7 +354,7 @@
     "quitApp": "Quit App"
   },
   "onboarding": {
-    "welcome": "Welcome to OpenCodeBoard",
+    "welcome": "Welcome to OpenCodeGoBoard",
     "subtitle": "Choose your preferred appearance and system behavior",
     "themeLabel": "Interface Theme",
     "tray": "Minimize to System Tray",
