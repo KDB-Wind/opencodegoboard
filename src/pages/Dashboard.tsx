@@ -163,9 +163,10 @@ export function Dashboard() {
   const initialTopPeriod = getStoredTimeRange();
   const [topPeriod, setTopPeriod] = useState<TimeRange>(initialTopPeriod === 'custom' ? '30d' : initialTopPeriod);
   const [syncing, setSyncing] = useState(false);
-  useEffect(() => {
-    storeTimeRange(topPeriod);
-  }, [topPeriod]);
+  const handleTopPeriodChange = (value: TimeRange) => {
+    setTopPeriod(value);
+    storeTimeRange(value);
+  };
   const { data, loading, refetch: refetchDashboard } = usePolling((signal) => api.getDashboard('30d', signal), 30000);
   const timezone = data?.timezone || DEFAULT_TIMEZONE;
 
@@ -369,7 +370,7 @@ export function Dashboard() {
         <div className="flex-1 border border-base-200 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="text-xs font-bold text-base-content/50 uppercase tracking-wider">{t('dashboard.modelTop3')}</div>
-            <TimeRangeTabs value={topPeriod} onChange={setTopPeriod} size="xs" />
+            <TimeRangeTabs value={topPeriod} onChange={handleTopPeriodChange} size="xs" />
           </div>
           <ModelDonut models={topTokens} />
           <div className="text-xs text-subtle mt-3 pt-3 border-t border-base-200">
