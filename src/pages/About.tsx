@@ -8,7 +8,7 @@ function openLink(url: string) {
 
 export function About() {
   const { t } = useTranslation();
-  const [version, setVersion] = useState('1.2.0');
+  const [version, setVersion] = useState('1.3.0');
 
   useEffect(() => {
     desktop.getVersion().then(setVersion).catch(() => {});

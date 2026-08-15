@@ -1,5 +1,16 @@
 # OpenCodeBoard Changelog
 
+## v1.3.0
+
+- 默认极简模式：新安装只保留核心配额、基础用量、最近记录与核心设置；功能可随时在“设置 → 功能模式”中开启。
+  Minimal by default: fresh installs keep only core quota, basic usage, recent records, and core settings; features can be enabled anytime in Settings → Feature Mode.
+- 五组功能开关：用量统计、用量记录、额度智能与提醒、数据与诊断工具、高级同步；极简/完整预设按钮只写入组合，持久化的只有组开关。
+  Five feature groups: Usage Stats, Usage Records, Quota Intelligence & Alerts, Data & Diagnostic Tools, Advanced Sync; Minimal/Full preset buttons are actions only, and only group switches are persisted.
+- 老用户升级保持全部功能并显示一次性切换提示；新用户首次引导可选择极简（默认）或完整。
+  Existing users keep all features with a one-time prompt; new users can choose Minimal (default) or Full during onboarding.
+- 被关闭的功能会隐藏路由/区块，后端跳过对应计算并拒绝专有接口；基础同步与额度快照采集不受影响，历史数据不删除。
+  Disabled features hide routes/blocks, skip backend computation, and reject feature-specific endpoints; base sync and quota snapshot collection continue, and no data is deleted.
+
 ## v1.2.0 (fork)
 
 - OpenCodeBoard branding and new mascot logo.
