@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "OpenCodeBoard",
-    "subtitle": "- OpenCode Go Manager"
+    "subtitle": "- OpenCode Go Board"
   },
   "nav": {
     "primary": "主导航",
@@ -26,7 +26,7 @@
     "output": "输出",
     "reasoning": "推理",
     "total": "总计",
-    "totalTokens": "总 Tokens",
+    "totalTokens": "总 Token 数",
     "cost": "费用",
     "requests": "请求数",
     "cancel": "取消",
@@ -39,10 +39,11 @@
     "account": "账户",
     "time": "时间",
     "model": "模型",
-    "plan": "Plan",
+    "plan": "套餐",
     "minute": "分钟",
     "seconds": "秒",
-    "close": "关闭"
+    "close": "关闭",
+    "planGo": "Go 套餐"
   },
   "timeRange": {
     "today": "今天",
@@ -75,7 +76,7 @@
     "allGood": "各账户额度充足，运行正常",
     "mostConsumed": "消耗最多的模型是 {{model}}，占比 {{percent}}%",
     "noModelData": "暂无法获取模型用量数据",
-    "heroTooltipTokens": "Tokens",
+    "heroTooltipTokens": "Token 数量",
     "syncAll": "同步并回填",
     "syncing": "同步中…",
     "syncDone": "同步完成，新增 {{count}} 条记录",
@@ -125,7 +126,7 @@
     "subtitle": "查看任意时段的 Token 用量、模型排行与趋势",
     "totalRequests": "总请求",
     "totalCost": "总费用",
-    "breakdownTitle": "Token 明细",
+    "breakdownTitle": "Token 消耗明细",
     "uncachedInput": "未命中输入",
     "cacheHit": "缓存命中",
     "cacheWrite": "缓存写入",
@@ -141,15 +142,16 @@
     "tableRequests": "请求数",
     "tableInput": "输入",
     "tableOutput": "输出",
-    "tableTotalTokens": "总 Tokens",
+    "tableTotalTokens": "总 Token 数",
     "tableCost": "费用",
     "trendTitle": "用量趋势",
     "trendCost": "费用",
     "trendRequests": "请求",
-    "trendTokens": "Tokens",
+    "trendTokens": "Token 用量",
     "trendCompare": "归一化对比",
     "trendTooltipCost": "费用",
-    "trendTooltipRequests": "请求数"
+    "trendTooltipRequests": "请求数",
+    "reasoning": "推理"
   },
   "dailyTrends": {
     "title": "每日用量",
@@ -272,7 +274,7 @@
     "refreshStatus": "刷新状态",
     "restart": "重启后端",
     "explanation": "说明",
-    "syncVsBackfill": "同步 vs 回填",
+    "syncVsBackfill": "同步与回填",
     "syncExplanation": "是从当前位置往前翻，拉取最新的使用记录。启用自动同步后，后台会按设定的间隔自动执行。点击账户旁的「同步」按钮可手动触发。",
     "syncLabel": "同步",
     "backfillExplanation": "是从已拉到的最深处继续往前翻，专门用来拉取历史数据。新添加的账户需要先回填才能看到过去的记录。页数越大拉得越多。",
@@ -291,7 +293,7 @@
     "workspaceId": "Workspace ID",
     "authCookie": "Auth Cookie",
     "namePlaceholder": "例如: 我的主账户",
-    "workspacePlaceholder": "Default",
+    "workspacePlaceholder": "默认",
     "cookiePlaceholder": "粘贴 auth=xxx...",
     "cookieKeepHint": "留空将保留当前凭据；粘贴新 Cookie 可重新授权。",
     "confirmDelete": "确认删除",
@@ -304,7 +306,7 @@
     "toastSyncFailed": "同步失败",
     "toastSyncFailedMsg": "同步失败: {{msg}}",
     "syncTimeout": "同步超时，请重试",
-    "toastTestSuccess": "测试成功! workspace: {{id}}",
+    "toastTestSuccess": "测试成功！工作区：{{id}}",
     "toastTestFailed": "测试失败: {{msg}}",
     "toastDeleted": "账户已删除",
     "toastDeleteFailed": "删除失败: {{msg}}",
@@ -326,7 +328,9 @@
     "pages500": "500 页",
     "pages1000": "1000 页",
     "saveSyncSettings": "保存同步设置",
-    "saveBackfillSettings": "保存回填设置"
+    "saveBackfillSettings": "保存回填设置",
+    "transportTauri": "Tauri IPC（未使用本地端口）",
+    "transportElectron": "Electron 本地 API"
   },
   "about": {
     "title": "OpenCodeBoard",

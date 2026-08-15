@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "OpenCodeBoard",
-    "subtitle": "- OpenCode Go Manager"
+    "subtitle": "- OpenCode Go Board"
   },
   "nav": {
     "primary": "Primary navigation",
@@ -42,7 +42,8 @@
     "plan": "Plan",
     "minute": "min",
     "seconds": "s",
-    "close": "Close"
+    "close": "Close",
+    "planGo": "Go Plan"
   },
   "timeRange": {
     "today": "Today",
@@ -149,7 +150,8 @@
     "trendTokens": "Tokens",
     "trendCompare": "Normalized comparison",
     "trendTooltipCost": "Cost",
-    "trendTooltipRequests": "Requests"
+    "trendTooltipRequests": "Requests",
+    "reasoning": "Reasoning"
   },
   "dailyTrends": {
     "title": "Daily Usage",
@@ -326,7 +328,9 @@
     "pages500": "500 pages",
     "pages1000": "1000 pages",
     "saveSyncSettings": "Save Sync Settings",
-    "saveBackfillSettings": "Save Backfill Settings"
+    "saveBackfillSettings": "Save Backfill Settings",
+    "transportTauri": "Tauri IPC (no local port)",
+    "transportElectron": "Electron local API"
   },
   "about": {
     "title": "OpenCodeBoard",

@@ -14,11 +14,6 @@ const planMap: Record<string, string> = {
   lite: 'go',
 };
 
-function displayPlan(p: string | null) {
-  if (!p) return null;
-  return planMap[p] || p;
-}
-
 function CacheBreakdown({ record, rect }: { record: UsageRecord; rect: DOMRect }) {
   const { t } = useTranslation();
   const uncached = record.uncached_input_tokens ?? record.input_tokens ?? 0;
@@ -69,6 +64,12 @@ function CacheBreakdown({ record, rect }: { record: UsageRecord; rect: DOMRect }
 export function UsageTable({ records, showAccount }: UsageTableProps) {
   const { t } = useTranslation();
   const [hover, setHover] = useState<{ record: UsageRecord; rect: DOMRect } | null>(null);
+
+  const planLabel = (p: string | null) => {
+    if (!p) return null;
+    const key = planMap[p] || p;
+    return key === 'go' ? t('common.planGo') : key;
+  };
 
   const formatTime = (iso: string) => {
     return new Intl.DateTimeFormat(undefined, { timeZone: getStoredTimezone(), month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso));
@@ -126,7 +127,7 @@ export function UsageTable({ records, showAccount }: UsageTableProps) {
                 <td className="text-right text-sm tabular-nums">{r.reasoning_tokens.toLocaleString()}</td>
                 <td className="text-right text-sm tabular-nums">${r.cost_usd.toFixed(6)}</td>
                 <td className="text-xs">
-                  {r.plan && <span className="badge badge-ghost badge-xs">{displayPlan(r.plan)}</span>}
+                  {r.plan && <span className="badge badge-ghost badge-xs">{planLabel(r.plan)}</span>}
                 </td>
               </tr>
             ))

@@ -59,7 +59,7 @@ function BackendStatus() {
       </div>
       <div className="flex items-center justify-between">
         <span className="text-sm text-base-content/70">{t('settings.backendAddress')}</span>
-        <span className="text-sm font-mono">{isTauri ? 'Tauri IPC (no local port)' : 'Electron local API'}</span>
+        <span className="text-sm font-mono">{isTauri ? t('settings.transportTauri') : t('settings.transportElectron')}</span>
       </div>
       <div className="flex gap-2">
         <button className="btn btn-outline btn-sm" onClick={check}>
