@@ -179,10 +179,6 @@
     "lastActive": "Last active",
     "noSessions": "No sessions",
     "project": "Project",
-    "linkProject": "Link",
-    "projectNamePrompt": "Project name",
-    "projectPathPrompt": "Local project directory",
-    "sessionTitlePrompt": "Session title",
     "noProjectPath": "No directory linked",
     "projectSummary": "Cost ${{cost}} · {{cache}}% cache · {{models}} models"
   },
