@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from './ThemeProvider';
 import { useFeatureFlags } from './FeatureFlagsProvider';
 import { useToast } from './Toast';
+import { detectFeaturePreset } from '../lib/featureFlags';
 import { desktop } from '../lib/desktop';
 
 const ONBOARDING_KEY = 'opencodeboard-onboarded';
@@ -13,18 +14,24 @@ export function OnboardingDialog() {
   const [show, setShow] = useState(false);
   const { theme, setTheme } = useTheme();
   const [tray, setTray] = useState(true);
-  const [mode, setMode] = useState<'minimal' | 'full'>('minimal');
-  const { applyPreset } = useFeatureFlags();
+  const { flags, featureLegacyPromptPending, applyPreset } = useFeatureFlags();
+  const [mode, setMode] = useState<'minimal' | 'full'>(() =>
+    detectFeaturePreset(flags) === 'full' ? 'full' : 'minimal',
+  );
+  const flagsRef = useRef(flags);
+  flagsRef.current = flags;
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (featureLegacyPromptPending) return;
     const done = localStorage.getItem(ONBOARDING_KEY);
     if (!done && ref.current) {
+      setMode(detectFeaturePreset(flagsRef.current) === 'full' ? 'full' : 'minimal');
       setShow(true);
       ref.current.showModal();
     }
-  }, []);
+  }, [featureLegacyPromptPending]);
 
   const handleFinish = async () => {
     try {
