@@ -1,6 +1,6 @@
 {
   "name": "opencodegoboard",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "description": "OpenCode Go 本地额度与用量决策面板",
   "author": "OpenCodeGoBoard contributors",
   "license": "MIT",
