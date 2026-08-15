@@ -8,6 +8,7 @@ use std::{fs, path::{Path, PathBuf}, sync::Mutex};
 use std::collections::HashMap;
 use url::Url;
 use uuid::Uuid;
+use crate::features::{self, ADVANCED_SYNC, DATA_TOOLS, QUOTA_INTELLIGENCE, TOKEN_STATS, USAGE_RECORDS};
 use crate::quota::{self, QuotaAccount};
 
 const SCHEMA_VERSION: i64 = 8;
@@ -24,6 +25,15 @@ fn now() -> String { Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true) }
 fn parse_timezone(value: &str) -> Tz { value.parse().unwrap_or(chrono_tz::Asia::Shanghai) }
 fn timezone_name(state: &BackendState) -> String {
     state.settings.lock().ok().and_then(|settings|settings["timezone"].as_str().map(str::to_owned)).unwrap_or_else(||"Asia/Shanghai".into())
+}
+fn settings_snapshot(state: &BackendState) -> Result<Value, String> {
+    state.settings.lock().map(|settings| settings.clone()).map_err(|_| "settings lock poisoned".into())
+}
+fn feature_enabled(state: &BackendState, key: &str) -> Result<bool, String> {
+    Ok(features::is_enabled(&settings_snapshot(state)?, key))
+}
+fn require_feature(state: &BackendState, key: &str) -> Result<(), String> {
+    if feature_enabled(state, key)? { Ok(()) } else { Err("feature_disabled".into()) }
 }
 fn period_start(days: i64, timezone: &str) -> String {
     let zone=parse_timezone(timezone);
@@ -101,7 +111,37 @@ pub fn initialize(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-pub fn load_settings(path:&Path)->Value{let mut settings=Connection::open(path).ok().and_then(|conn|conn.query_row("SELECT payload FROM service_settings WHERE id=1",[],|row|row.get::<_,String>(0)).ok()).and_then(|text|serde_json::from_str(&text).ok()).unwrap_or_else(||json!({"refresh":{"opencode_go":{"auto_refresh":true,"interval_sec":60}},"usage_sync":{"auto_sync":true,"interval_sec":300,"backfill_pages_per_request":100,"max_pages_per_incremental":30}}));if settings["timezone"].as_str().is_none(){settings["timezone"]=json!("Asia/Shanghai")}settings}
+fn default_settings() -> Value {
+    json!({
+        "refresh": {"opencode_go": {"auto_refresh": true, "interval_sec": 60}},
+        "usage_sync": {"auto_sync": true, "interval_sec": 300, "backfill_pages_per_request": 100, "max_pages_per_incremental": 30},
+        "timezone": "Asia/Shanghai",
+        "feature_flags": features::defaults_minimal(),
+        "feature_legacy_prompt_pending": false
+    })
+}
+
+pub fn load_settings(path:&Path)->Value {
+    let stored: Option<Value> = Connection::open(path).ok()
+        .and_then(|conn| conn.query_row("SELECT payload FROM service_settings WHERE id=1", [], |row| row.get::<_, String>(0)).ok())
+        .and_then(|text| serde_json::from_str(&text).ok());
+    // A profile that predates feature flags gets full mode plus a one-time hint.
+    let had_row = stored.is_some();
+    let had_complete_flags = stored.as_ref()
+        .and_then(|settings| settings.get("feature_flags"))
+        .and_then(Value::as_object)
+        .map(|flags| features::FEATURE_KEYS.iter().all(|key| flags.contains_key(*key)))
+        .unwrap_or(false);
+    let legacy_full = had_row && !had_complete_flags;
+    let stored_settings = stored.unwrap_or_else(default_settings);
+    let mut settings = default_settings();
+    if legacy_full { settings["feature_flags"] = features::defaults_full(); }
+    merge_json(&mut settings, &stored_settings);
+    features::ensure_flags(&mut settings, legacy_full);
+    if legacy_full { settings["feature_legacy_prompt_pending"] = json!(true); }
+    if settings.get("feature_legacy_prompt_pending").is_none() { settings["feature_legacy_prompt_pending"] = json!(false); }
+    settings
+}
 
 pub fn migrate_legacy_credentials(path:&Path)->Result<usize,String>{let conn=Connection::open(path).map_err(|e|e.to_string())?;let rows:Vec<(String,String)>=conn.prepare("SELECT id,auth_cookie FROM opencode_accounts WHERE auth_cookie LIKE 'enc:%'").map_err(|e|e.to_string())?.query_map([],|row|Ok((row.get(0)?,row.get(1)?))).map_err(|e|e.to_string())?.collect::<Result<_,_>>().map_err(|e|e.to_string())?;let mut migrated=0;for(id,stored)in rows{if let Ok(secret)=crate::secrets::decrypt_electron(&stored){crate::secrets::set(&id,&secret)?;conn.execute("UPDATE opencode_accounts SET auth_cookie='keyring',updated_at=? WHERE id=?",params![now(),id]).map_err(|e|e.to_string())?;migrated+=1}}Ok(migrated)}
 
@@ -122,8 +162,8 @@ fn accounts(conn: &Connection) -> Result<Vec<Value>, String> {
 }
 
 fn config(state: &BackendState, conn: &Connection) -> Result<Value, String> {
-    let settings = state.settings.lock().map_err(|_| "settings lock poisoned")?.clone();
-    Ok(json!({"refresh":settings["refresh"],"usage_sync":settings["usage_sync"],"timezone":settings["timezone"],"accounts_imported":!accounts(conn)?.is_empty(),"opencode_accounts":accounts(conn)?}))
+    let settings = settings_snapshot(state)?;
+    Ok(json!({"refresh":settings["refresh"],"usage_sync":settings["usage_sync"],"timezone":settings["timezone"],"feature_flags":settings["feature_flags"],"feature_legacy_prompt_pending":settings["feature_legacy_prompt_pending"],"accounts_imported":!accounts(conn)?.is_empty(),"opencode_accounts":accounts(conn)?}))
 }
 
 fn usage_select() -> &'static str { r#"ur.usg_id,ur.account_id,oa.name account_name,ur.created_at,ur.model,ur.provider,
@@ -179,11 +219,12 @@ async fn fetch_quotas(state:&BackendState)->Result<Vec<Value>,String>{let conn=C
 async fn route(state:&BackendState, request:&ApiRequest)->Result<Value,String>{
     let url=Url::parse(&format!("ipc://local{}",request.path)).map_err(|e|e.to_string())?; let path=url.path();
     let qp=|name:&str|url.query_pairs().find(|(k,_)|k==name).map(|(_,v)|v.into_owned());
-    if request.method=="POST"&&path=="/data/restore"{let encoded=request.body.as_ref().and_then(|v|v["base64"].as_str()).ok_or("backup payload required")?;let bytes=BASE64.decode(encoded).map_err(|e|e.to_string())?;if bytes.len()<16||&bytes[..16]!=b"SQLite format 3\0"{return Err("invalid SQLite backup".into())}let candidate=state.db_path.with_extension("restore.db");fs::write(&candidate,&bytes).map_err(|e|e.to_string())?;let check=Connection::open(&candidate).map_err(|e|e.to_string())?;let integrity:String=check.query_row("PRAGMA integrity_check",[],|r|r.get(0)).map_err(|e|e.to_string())?;let version:i64=check.query_row("PRAGMA user_version",[],|r|r.get(0)).map_err(|e|e.to_string())?;drop(check);if integrity!="ok"||version>SCHEMA_VERSION{let _=fs::remove_file(&candidate);return Err("backup integrity or schema validation failed".into())}fs::copy(&state.db_path,state.db_path.with_extension("before-restore.db")).map_err(|e|e.to_string())?;fs::copy(&candidate,&state.db_path).map_err(|e|e.to_string())?;fs::remove_file(candidate).map_err(|e|e.to_string())?;return Ok(json!({"ok":true,"schema_version":version}))}
+    if request.method=="POST"&&path=="/data/restore"{require_feature(state, DATA_TOOLS)?;let encoded=request.body.as_ref().and_then(|v|v["base64"].as_str()).ok_or("backup payload required")?;let bytes=BASE64.decode(encoded).map_err(|e|e.to_string())?;if bytes.len()<16||&bytes[..16]!=b"SQLite format 3\0"{return Err("invalid SQLite backup".into())}let candidate=state.db_path.with_extension("restore.db");fs::write(&candidate,&bytes).map_err(|e|e.to_string())?;let check=Connection::open(&candidate).map_err(|e|e.to_string())?;let integrity:String=check.query_row("PRAGMA integrity_check",[],|r|r.get(0)).map_err(|e|e.to_string())?;let version:i64=check.query_row("PRAGMA user_version",[],|r|r.get(0)).map_err(|e|e.to_string())?;drop(check);if integrity!="ok"||version>SCHEMA_VERSION{let _=fs::remove_file(&candidate);return Err("backup integrity or schema validation failed".into())}fs::copy(&state.db_path,state.db_path.with_extension("before-restore.db")).map_err(|e|e.to_string())?;fs::copy(&candidate,&state.db_path).map_err(|e|e.to_string())?;fs::remove_file(candidate).map_err(|e|e.to_string())?;return Ok(json!({"ok":true,"schema_version":version}))}
     let conn=Connection::open(&state.db_path).map_err(|e|e.to_string())?; conn.pragma_update(None,"foreign_keys","ON").map_err(|e|e.to_string())?;configure_connection(&conn)?;
     let timezone=timezone_name(state);
     let parts:Vec<&str>=path.trim_matches('/').split('/').collect();
     if request.method=="GET"&&path=="/usage/sessions" {
+        require_feature(state, USAGE_RECORDS)?;
         let account=qp("account_id");
         let mut args=vec![];
         let where_sql=if let Some(id)=account{args.push(json!(id));"WHERE ur.account_id=?"}else{""};
@@ -196,6 +237,7 @@ async fn route(state:&BackendState, request:&ApiRequest)->Result<Value,String>{
         return Ok(json!({"total":total,"sessions":query_json(&conn,&sql,&args)?,"offset":offset,"limit":limit}));
     }
     if request.method=="POST"&&parts.len()>=5&&parts[0]=="accounts"&&parts[1]=="opencode"&&parts[3]=="usage"&&(parts[4]=="sync"||parts[4]=="backfill"){
+        if parts[4]=="backfill" { require_feature(state, ADVANCED_SYNC)?; }
         let id=parts[2].to_string();
         let (max,stop_at)=if parts[4]=="sync"{(30,None)}else{match qp("mode").as_deref().unwrap_or("days"){
             "all"=>(10_000,None),
@@ -209,47 +251,47 @@ async fn route(state:&BackendState, request:&ApiRequest)->Result<Value,String>{
     match (request.method.as_str(),path) {
       ("GET","/health")=>Ok(json!({"status":"ok","transport":"tauri-ipc"})),
       ("GET","/config")=>config(state,&conn),
-      ("PUT","/config")=>{let body=request.body.clone().unwrap_or(json!({}));if let Some(value)=body["timezone"].as_str(){value.parse::<Tz>().map_err(|_|"invalid IANA timezone")?;}let mut guard=state.settings.lock().map_err(|_|"settings lock poisoned")?;merge_json(&mut guard,&body);conn.execute("INSERT INTO service_settings(id,payload,updated_at) VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at",params![guard.to_string(),now()]).map_err(|e|e.to_string())?;drop(guard);config(state,&conn)},
+      ("PUT","/config")=>{let body=request.body.clone().unwrap_or(json!({}));features::validate_patch(&body)?;if let Some(value)=body["timezone"].as_str(){value.parse::<Tz>().map_err(|_|"invalid IANA timezone")?;}let mut guard=state.settings.lock().map_err(|_|"settings lock poisoned")?;merge_json(&mut guard,&body);features::ensure_flags(&mut guard,false);conn.execute("INSERT INTO service_settings(id,payload,updated_at) VALUES(1,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at",params![guard.to_string(),now()]).map_err(|e|e.to_string())?;drop(guard);config(state,&conn)},
       ("GET","/accounts/opencode")=>Ok(Value::Array(accounts(&conn)?)),
       ("POST","/accounts/opencode")=>{let b=request.body.as_ref().ok_or("request body required")?;let id=Uuid::new_v4().to_string();let timestamp=now();crate::secrets::set(&id,b["auth_cookie"].as_str().unwrap_or(""))?;if let Err(error)=conn.execute("INSERT INTO opencode_accounts(id,name,workspace_id,auth_cookie,show_rolling,show_weekly,show_monthly,enabled,created_at,updated_at) VALUES(?,?,?,'keyring',1,1,1,1,?,?)",params![id,b["name"].as_str().unwrap_or("Account"),b["workspace_id"].as_str().unwrap_or("Default"),timestamp,timestamp]){crate::secrets::remove(&id);return Err(error.to_string())}conn.execute("INSERT INTO usage_sync_state(account_id) VALUES(?)",params![id]).map_err(|e|e.to_string())?;Ok(account_view(one(&conn,"SELECT * FROM opencode_accounts WHERE id=?",&[json!(id)])?))},
-      ("GET","/usage/all")=>list_usage(&conn,qp("account_id").as_deref(),qp("offset").and_then(|v|v.parse().ok()).unwrap_or(0),qp("limit").and_then(|v|v.parse().ok()).unwrap_or(50)),
+      ("GET","/usage/all")=>{require_feature(state, USAGE_RECORDS)?;list_usage(&conn,qp("account_id").as_deref(),qp("offset").and_then(|v|v.parse().ok()).unwrap_or(0),qp("limit").and_then(|v|v.parse().ok()).unwrap_or(50))},
       ("GET","/health/data")=>Ok(json!({"accounts":health(&conn)?})),
-      ("GET","/analytics/opencode/daily")=>{let days=qp("days").and_then(|v|v.parse().ok()).unwrap_or(30);Ok(json!({"days":days,"timezone":timezone,"stats":daily_stats(&conn,days,qp("account_id").as_deref(),&timezone)?}))},
+      ("GET","/analytics/opencode/daily")=>{require_feature(state, TOKEN_STATS)?;let days=qp("days").and_then(|v|v.parse().ok()).unwrap_or(30);Ok(json!({"days":days,"timezone":timezone,"stats":daily_stats(&conn,days,qp("account_id").as_deref(),&timezone)?}))},
       ("GET","/analytics/opencode/model-tokens")=>{let days=qp("period").map(|p|period_days(&p)).or_else(||qp("days").and_then(|v|v.parse().ok())).unwrap_or(30);Ok(json!({"days":days,"timezone":timezone,"stats":model_stats(&conn,days,qp("account_id").as_deref(),&timezone)?}))},
-      ("GET","/analytics/opencode/daily/models")=>{let days=qp("days").and_then(|v|v.parse().ok()).unwrap_or(30);Ok(json!({"days":days,"timezone":timezone,"stats":daily_model_stats(&conn,days,qp("account_id").as_deref(),&timezone)?}))},
-      ("GET","/analytics/opencode/hourly")=>Ok(json!({"hours":24,"timezone":timezone,"stats":hourly_stats(&conn,qp("account_id").as_deref(),&timezone)?})),
-      ("GET","/analytics/opencode/projects")=>Ok(json!({"projects":project_stats(&conn,qp("account_id").as_deref())?})),
-      ("GET","/quota/snapshots")=>{let limit=qp("limit").and_then(|v|v.parse::<i64>().ok()).unwrap_or(500).clamp(1,2000);let mut clauses=vec![];let mut args=vec![];if let Some(id)=qp("account_id"){clauses.push("account_id=?");args.push(json!(id));}if let Some(label)=qp("window_label"){clauses.push("window_label=?");args.push(json!(label));}let where_sql=if clauses.is_empty(){"".into()}else{format!("WHERE {}",clauses.join(" AND "))};args.push(json!(limit));Ok(json!({"snapshots":query_json(&conn,&format!("SELECT * FROM quota_snapshots {where_sql} ORDER BY captured_at DESC LIMIT ?"),&args)?}))},
-      ("GET","/quota/weights")=>Ok(json!({"rules":query_json(&conn,"SELECT * FROM quota_weight_rules ORDER BY effective_from DESC",&[])?})),
-      ("POST","/quota/weights")=>{let b=request.body.as_ref().ok_or("request body required")?;let id=Uuid::new_v4().to_string();conn.execute("INSERT INTO quota_weight_rules(id,account_id,plan,model_pattern,weight,effective_from,source,created_at) VALUES(?,?,?,?,?,?,'manual',?)",params![id,b["account_id"].as_str(),b["plan"].as_str(),b["model_pattern"].as_str().unwrap_or("*"),b["weight"].as_f64().unwrap_or(1.0),b["effective_from"].as_str().unwrap_or(&now()),now()]).map_err(|e|e.to_string())?;one(&conn,"SELECT * FROM quota_weight_rules WHERE id=?",&[json!(id)])},
+      ("GET","/analytics/opencode/daily/models")=>{require_feature(state, TOKEN_STATS)?;let days=qp("days").and_then(|v|v.parse().ok()).unwrap_or(30);Ok(json!({"days":days,"timezone":timezone,"stats":daily_model_stats(&conn,days,qp("account_id").as_deref(),&timezone)?}))},
+      ("GET","/analytics/opencode/hourly")=>{require_feature(state, TOKEN_STATS)?;Ok(json!({"hours":24,"timezone":timezone,"stats":hourly_stats(&conn,qp("account_id").as_deref(),&timezone)?}))},
+      ("GET","/analytics/opencode/projects")=>{require_feature(state, USAGE_RECORDS)?;Ok(json!({"projects":project_stats(&conn,qp("account_id").as_deref())?}))},
+      ("GET","/quota/snapshots")=>{require_feature(state, QUOTA_INTELLIGENCE)?;let limit=qp("limit").and_then(|v|v.parse::<i64>().ok()).unwrap_or(500).clamp(1,2000);let mut clauses=vec![];let mut args=vec![];if let Some(id)=qp("account_id"){clauses.push("account_id=?");args.push(json!(id));}if let Some(label)=qp("window_label"){clauses.push("window_label=?");args.push(json!(label));}let where_sql=if clauses.is_empty(){"".into()}else{format!("WHERE {}",clauses.join(" AND "))};args.push(json!(limit));Ok(json!({"snapshots":query_json(&conn,&format!("SELECT * FROM quota_snapshots {where_sql} ORDER BY captured_at DESC LIMIT ?"),&args)?}))},
+      ("GET","/quota/weights")=>{require_feature(state, QUOTA_INTELLIGENCE)?;Ok(json!({"rules":query_json(&conn,"SELECT * FROM quota_weight_rules ORDER BY effective_from DESC",&[])?}))},
+      ("POST","/quota/weights")=>{require_feature(state, QUOTA_INTELLIGENCE)?;let b=request.body.as_ref().ok_or("request body required")?;let id=Uuid::new_v4().to_string();conn.execute("INSERT INTO quota_weight_rules(id,account_id,plan,model_pattern,weight,effective_from,source,created_at) VALUES(?,?,?,?,?,?,'manual',?)",params![id,b["account_id"].as_str(),b["plan"].as_str(),b["model_pattern"].as_str().unwrap_or("*"),b["weight"].as_f64().unwrap_or(1.0),b["effective_from"].as_str().unwrap_or(&now()),now()]).map_err(|e|e.to_string())?;one(&conn,"SELECT * FROM quota_weight_rules WHERE id=?",&[json!(id)])},
       ("GET","/quota")=>{drop(conn);Ok(Value::Array(fetch_quotas(state).await?))},
-      ("GET","/quota/intelligence")=>Ok(json!({"windows":quota_intelligence(&conn,qp("account_id").as_deref())?})),
-      ("GET","/quota/reconciliation")=>Ok(json!({"events":reconciliation(&conn,qp("account_id").as_deref())?})),
-      ("GET","/quota/units")=>quota_units(&conn,qp("period").as_deref().unwrap_or("30d"),qp("account_id").as_deref(),&timezone),
-      ("GET","/recommendations")=>{let intel=quota_intelligence(&conn,None)?;recommendations(&conn,&intel)},
-      ("POST","/quota/weights/calibrate")=>Ok(json!({"created":auto_calibrate(&conn,qp("account_id").as_deref())?})),
-      ("GET","/dashboard")=>{let period=qp("period").unwrap_or_else(||"30d".into());drop(conn);let quota=fetch_quotas(state).await?;let conn=Connection::open(&state.db_path).map_err(|e|e.to_string())?;configure_connection(&conn)?;let days=period_days(&period);let recent=list_usage(&conn,None,0,10)?;let model=model_stats(&conn,days,None,&timezone)?;let intel=quota_intelligence(&conn,None)?;Ok(json!({"overview":{"opencode":aggregate_quota(&quota)},"quota":quota,"recent_usage":{"records":recent["records"],"total":recent["total"]},"model_tokens":model,"data_health":health(&conn)?,"quota_intelligence":intel,"quota_reconciliation":reconciliation(&conn,None)?.into_iter().take(50).collect::<Vec<_>>(),"quota_units":quota_units(&conn,&period,None,&timezone)?,"recommendations":recommendations(&conn,&intel)?,"period":period,"timezone":timezone}))},
+      ("GET","/quota/intelligence")=>{require_feature(state, QUOTA_INTELLIGENCE)?;Ok(json!({"windows":quota_intelligence(&conn,qp("account_id").as_deref())?}))},
+      ("GET","/quota/reconciliation")=>{require_feature(state, QUOTA_INTELLIGENCE)?;Ok(json!({"events":reconciliation(&conn,qp("account_id").as_deref())?}))},
+      ("GET","/quota/units")=>{require_feature(state, QUOTA_INTELLIGENCE)?;quota_units(&conn,qp("period").as_deref().unwrap_or("30d"),qp("account_id").as_deref(),&timezone)},
+      ("GET","/recommendations")=>{require_feature(state, QUOTA_INTELLIGENCE)?;let intel=quota_intelligence(&conn,None)?;recommendations(&conn,&intel)},
+      ("POST","/quota/weights/calibrate")=>{require_feature(state, QUOTA_INTELLIGENCE)?;Ok(json!({"created":auto_calibrate(&conn,qp("account_id").as_deref())?}))},
+      ("GET","/dashboard")=>{let period=qp("period").unwrap_or_else(||"30d".into());drop(conn);let quota=fetch_quotas(state).await?;let conn=Connection::open(&state.db_path).map_err(|e|e.to_string())?;configure_connection(&conn)?;let days=period_days(&period);let recent=list_usage(&conn,None,0,10)?;let model=model_stats(&conn,days,None,&timezone)?;let smart=feature_enabled(state,QUOTA_INTELLIGENCE)?;let intel=if smart{quota_intelligence(&conn,None)?}else{Vec::new()};let reconciliation_events=if smart{reconciliation(&conn,None)?.into_iter().take(50).collect::<Vec<_>>()}else{Vec::new()};let quota_units=if smart{quota_units(&conn,&period,None,&timezone)?}else{json!({"period":period.clone(),"total_quota_units":0.0,"request_count":0,"models":[]})};let recommendations=if smart{recommendations(&conn,&intel)?}else{Value::Null};Ok(json!({"overview":{"opencode":aggregate_quota(&quota)},"quota":quota,"recent_usage":{"records":recent["records"],"total":recent["total"]},"model_tokens":model,"data_health":health(&conn)?,"quota_intelligence":intel,"quota_reconciliation":reconciliation_events,"quota_units":quota_units,"recommendations":recommendations,"period":period,"timezone":timezone}))},
       ("GET","/analytics/overview")=>{drop(conn);let quota=fetch_quotas(state).await?;Ok(json!({"opencode":aggregate_quota(&quota)}))},
-      ("GET","/data/backup")=>{conn.execute_batch("PRAGMA wal_checkpoint(FULL)").map_err(|e|e.to_string())?;drop(conn);let bytes=fs::read(&state.db_path).map_err(|e|e.to_string())?;Ok(json!({"base64":BASE64.encode(bytes),"mime":"application/x-sqlite3","filename":"opencodegoboard-backup.db"}))},
-      ("GET","/data/diagnostics")=>{let report=json!({"format":"opencodegoboard-diagnostics","format_version":1,"generated_at":now(),"runtime":{"platform":std::env::consts::OS,"arch":std::env::consts::ARCH,"transport":"tauri-ipc"},"database":{"schema_version":SCHEMA_VERSION,"counts":{"accounts":one(&conn,"SELECT COUNT(*) count FROM opencode_accounts",&[])?["count"],"usage_records":one(&conn,"SELECT COUNT(*) count FROM usage_records",&[])?["count"],"quota_snapshots":one(&conn,"SELECT COUNT(*) count FROM quota_snapshots",&[])?["count"]}},"data_health":health(&conn)?});let bytes=serde_json::to_vec_pretty(&report).map_err(|e|e.to_string())?;Ok(json!({"base64":BASE64.encode(bytes),"mime":"application/json","filename":"opencodegoboard-diagnostics.json"}))},
-      ("GET","/data/export.csv")=>{let rows=query_json(&conn,&format!("SELECT {} FROM usage_records ur JOIN opencode_accounts oa ON oa.id=ur.account_id ORDER BY ur.created_at DESC",usage_select()),&[])?;let mut csv=String::from("usg_id,account_name,created_at,model,input_tokens,output_tokens,reasoning_tokens,cost_usd,session_id,project_path\n");for row in rows{let fields=["usg_id","account_name","created_at","model","input_tokens","output_tokens","reasoning_tokens","cost_usd","session_id","project_path"].map(|key|format!("\"{}\"",row[key].as_str().map(str::to_string).unwrap_or_else(||row[key].to_string()).replace('"',"\"\"")));csv.push_str(&fields.join(","));csv.push('\n');}Ok(json!({"base64":BASE64.encode(csv.as_bytes()),"mime":"text/csv;charset=utf-8","filename":"opencodegoboard-usage.csv"}))},
-      _=>dynamic_route(&conn,request,path,&url),
+      ("GET","/data/backup")=>{require_feature(state, DATA_TOOLS)?;conn.execute_batch("PRAGMA wal_checkpoint(FULL)").map_err(|e|e.to_string())?;drop(conn);let bytes=fs::read(&state.db_path).map_err(|e|e.to_string())?;Ok(json!({"base64":BASE64.encode(bytes),"mime":"application/x-sqlite3","filename":"opencodegoboard-backup.db"}))},
+      ("GET","/data/diagnostics")=>{require_feature(state, DATA_TOOLS)?;let report=json!({"format":"opencodegoboard-diagnostics","format_version":1,"generated_at":now(),"runtime":{"platform":std::env::consts::OS,"arch":std::env::consts::ARCH,"transport":"tauri-ipc"},"database":{"schema_version":SCHEMA_VERSION,"counts":{"accounts":one(&conn,"SELECT COUNT(*) count FROM opencode_accounts",&[])?["count"],"usage_records":one(&conn,"SELECT COUNT(*) count FROM usage_records",&[])?["count"],"quota_snapshots":one(&conn,"SELECT COUNT(*) count FROM quota_snapshots",&[])?["count"]}},"data_health":health(&conn)?});let bytes=serde_json::to_vec_pretty(&report).map_err(|e|e.to_string())?;Ok(json!({"base64":BASE64.encode(bytes),"mime":"application/json","filename":"opencodegoboard-diagnostics.json"}))},
+      ("GET","/data/export.csv")=>{require_feature(state, DATA_TOOLS)?;let rows=query_json(&conn,&format!("SELECT {} FROM usage_records ur JOIN opencode_accounts oa ON oa.id=ur.account_id ORDER BY ur.created_at DESC",usage_select()),&[])?;let mut csv=String::from("usg_id,account_name,created_at,model,input_tokens,output_tokens,reasoning_tokens,cost_usd,session_id,project_path\n");for row in rows{let fields=["usg_id","account_name","created_at","model","input_tokens","output_tokens","reasoning_tokens","cost_usd","session_id","project_path"].map(|key|format!("\"{}\"",row[key].as_str().map(str::to_string).unwrap_or_else(||row[key].to_string()).replace('"',"\"\"")));csv.push_str(&fields.join(","));csv.push('\n');}Ok(json!({"base64":BASE64.encode(csv.as_bytes()),"mime":"text/csv;charset=utf-8","filename":"opencodegoboard-usage.csv"}))},
+      _=>dynamic_route(state,&conn,request,path,&url),
     }
 }
 
 fn merge_json(target:&mut Value,patch:&Value){if let(Value::Object(to),Value::Object(from))=(target,patch){for(k,v)in from{if v.is_object(){merge_json(to.entry(k).or_insert(json!({})),v)}else{to.insert(k.clone(),v.clone());}}}}
 
-fn dynamic_route(conn:&Connection,request:&ApiRequest,path:&str,url:&Url)->Result<Value,String>{
+fn dynamic_route(state:&BackendState,conn:&Connection,request:&ApiRequest,path:&str,url:&Url)->Result<Value,String>{
     let segments:Vec<&str>=path.trim_matches('/').split('/').collect();let qp=|name:&str|url.query_pairs().find(|(k,_)|k==name).map(|(_,v)|v.into_owned());
     if segments.len()>=3&&segments[0]=="accounts"&&segments[1]=="opencode"{let id=segments[2];
       if segments.len()==3&&request.method=="DELETE"{crate::secrets::remove(id);return Ok(json!({"ok":conn.execute("DELETE FROM opencode_accounts WHERE id=?",params![id]).map_err(|e|e.to_string())?>0}));}
       if segments.len()==3&&request.method=="PUT"{let body=request.body.as_ref().ok_or("request body required")?;for key in ["name","workspace_id"]{if let Some(v)=body.get(key).and_then(Value::as_str){conn.execute(&format!("UPDATE opencode_accounts SET {key}=?,updated_at=? WHERE id=?"),params![v,now(),id]).map_err(|e|e.to_string())?;}}if let Some(secret)=body.get("auth_cookie").and_then(Value::as_str){crate::secrets::set(id,secret)?;conn.execute("UPDATE opencode_accounts SET auth_cookie='keyring',updated_at=? WHERE id=?",params![now(),id]).map_err(|e|e.to_string())?;}for key in ["show_rolling","show_weekly","show_monthly","enabled"]{if let Some(v)=body.get(key).and_then(Value::as_bool){conn.execute(&format!("UPDATE opencode_accounts SET {key}=?,updated_at=? WHERE id=?"),params![v as i64,now(),id]).map_err(|e|e.to_string())?;}}return Ok(account_view(one(conn,"SELECT * FROM opencode_accounts WHERE id=?",&[json!(id)])?));}
-      if segments.get(3)==Some(&"usage")&&request.method=="GET"{return list_usage(conn,Some(id),qp("offset").and_then(|v|v.parse().ok()).unwrap_or(0),qp("limit").and_then(|v|v.parse().ok()).unwrap_or(100));}
+      if segments.get(3)==Some(&"usage")&&request.method=="GET"{require_feature(state, USAGE_RECORDS)?;return list_usage(conn,Some(id),qp("offset").and_then(|v|v.parse().ok()).unwrap_or(0),qp("limit").and_then(|v|v.parse().ok()).unwrap_or(100));}
       if segments.get(3)==Some(&"usage")&&segments.get(4)==Some(&"progress"){return Ok(json!({"status":"idle","current":0,"total":0,"inserted":0}));}
     }
-    if path=="/usage/sessions"{let account=qp("account_id");let mut args=vec![];let where_sql=if let Some(id)=account{args.push(json!(id));"WHERE ur.account_id=?"}else{""};let limit=qp("limit").and_then(|v|v.parse::<i64>().ok()).unwrap_or(50);let offset=qp("offset").and_then(|v|v.parse::<i64>().ok()).unwrap_or(0);let sql=format!(r#"SELECT ur.account_id,oa.name account_name,NULLIF(ur.session_id,'') session_id,COALESCE(sc.project_name,MAX(NULLIF(ur.project_path,''))) project_name,COALESCE(sc.project_path,MAX(NULLIF(ur.project_path,''))) project_path,COALESCE(sc.title,MAX(NULLIF(ur.session_title,''))) session_title,COUNT(*) request_count,SUM(ur.input_tokens) total_input_tokens,SUM(ur.output_tokens) total_output_tokens,SUM(ur.reasoning_tokens) total_reasoning_tokens,SUM(ur.cache_read_tokens) total_cache_read_tokens,SUM(ur.cost_usd) total_cost_usd,MIN(ur.created_at) first_at,MAX(ur.created_at) last_at FROM usage_records ur JOIN opencode_accounts oa ON oa.id=ur.account_id LEFT JOIN session_contexts sc ON sc.account_id=ur.account_id AND sc.session_id=ur.session_id {where_sql} GROUP BY ur.account_id,oa.name,ur.session_id ORDER BY last_at DESC LIMIT ? OFFSET ?"#);args.push(json!(limit));args.push(json!(offset));let rows=query_json(conn,&sql,&args)?;return Ok(json!({"total":rows.len(),"sessions":rows,"offset":offset,"limit":limit}));}
-    if path=="/usage/session-context"&&request.method=="PUT"{let b=request.body.as_ref().ok_or("request body required")?;conn.execute("INSERT INTO session_contexts(account_id,session_id,project_name,project_path,title,source,updated_at) VALUES(?,?,?,?,?,'manual',?) ON CONFLICT(account_id,session_id) DO UPDATE SET project_name=excluded.project_name,project_path=excluded.project_path,title=excluded.title,updated_at=excluded.updated_at",params![b["account_id"].as_str(),b["session_id"].as_str(),b["project_name"].as_str(),b["project_path"].as_str(),b["title"].as_str(),now()]).map_err(|e|e.to_string())?;return Ok(b.clone());}
-    if path=="/usage/session-records"{let account=qp("account_id").ok_or("account_id required")?;let session=qp("session_id");let unassigned=qp("unassigned").as_deref()==Some("true");let(session_clause,mut args)=if unassigned{("(ur.session_id IS NULL OR ur.session_id='')",vec![json!(account)])}else{("ur.session_id=?",vec![json!(account),json!(session.unwrap_or_default())])};let total=one(conn,&format!("SELECT COUNT(*) total FROM usage_records ur WHERE ur.account_id=? AND {session_clause}"),&args)?["total"].as_i64().unwrap_or(0);args.push(json!(200));args.push(json!(0));let rows=query_json(conn,&format!("SELECT {} FROM usage_records ur JOIN opencode_accounts oa ON oa.id=ur.account_id WHERE ur.account_id=? AND {session_clause} ORDER BY ur.created_at DESC LIMIT ? OFFSET ?",usage_select()),&args)?;return Ok(json!({"records":rows,"total":total,"offset":0,"limit":200}));}
+    if path=="/usage/sessions"{require_feature(state, USAGE_RECORDS)?;let account=qp("account_id");let mut args=vec![];let where_sql=if let Some(id)=account{args.push(json!(id));"WHERE ur.account_id=?"}else{""};let limit=qp("limit").and_then(|v|v.parse::<i64>().ok()).unwrap_or(50);let offset=qp("offset").and_then(|v|v.parse::<i64>().ok()).unwrap_or(0);let sql=format!(r#"SELECT ur.account_id,oa.name account_name,NULLIF(ur.session_id,'') session_id,COALESCE(sc.project_name,MAX(NULLIF(ur.project_path,''))) project_name,COALESCE(sc.project_path,MAX(NULLIF(ur.project_path,''))) project_path,COALESCE(sc.title,MAX(NULLIF(ur.session_title,''))) session_title,COUNT(*) request_count,SUM(ur.input_tokens) total_input_tokens,SUM(ur.output_tokens) total_output_tokens,SUM(ur.reasoning_tokens) total_reasoning_tokens,SUM(ur.cache_read_tokens) total_cache_read_tokens,SUM(ur.cost_usd) total_cost_usd,MIN(ur.created_at) first_at,MAX(ur.created_at) last_at FROM usage_records ur JOIN opencode_accounts oa ON oa.id=ur.account_id LEFT JOIN session_contexts sc ON sc.account_id=ur.account_id AND sc.session_id=ur.session_id {where_sql} GROUP BY ur.account_id,oa.name,ur.session_id ORDER BY last_at DESC LIMIT ? OFFSET ?"#);args.push(json!(limit));args.push(json!(offset));let rows=query_json(conn,&sql,&args)?;return Ok(json!({"total":rows.len(),"sessions":rows,"offset":offset,"limit":limit}));}
+    if path=="/usage/session-context"&&request.method=="PUT"{require_feature(state, USAGE_RECORDS)?;let b=request.body.as_ref().ok_or("request body required")?;conn.execute("INSERT INTO session_contexts(account_id,session_id,project_name,project_path,title,source,updated_at) VALUES(?,?,?,?,?,'manual',?) ON CONFLICT(account_id,session_id) DO UPDATE SET project_name=excluded.project_name,project_path=excluded.project_path,title=excluded.title,updated_at=excluded.updated_at",params![b["account_id"].as_str(),b["session_id"].as_str(),b["project_name"].as_str(),b["project_path"].as_str(),b["title"].as_str(),now()]).map_err(|e|e.to_string())?;return Ok(b.clone());}
+    if path=="/usage/session-records"{require_feature(state, USAGE_RECORDS)?;let account=qp("account_id").ok_or("account_id required")?;let session=qp("session_id");let unassigned=qp("unassigned").as_deref()==Some("true");let(session_clause,mut args)=if unassigned{("(ur.session_id IS NULL OR ur.session_id='')",vec![json!(account)])}else{("ur.session_id=?",vec![json!(account),json!(session.unwrap_or_default())])};let total=one(conn,&format!("SELECT COUNT(*) total FROM usage_records ur WHERE ur.account_id=? AND {session_clause}"),&args)?["total"].as_i64().unwrap_or(0);args.push(json!(200));args.push(json!(0));let rows=query_json(conn,&format!("SELECT {} FROM usage_records ur JOIN opencode_accounts oa ON oa.id=ur.account_id WHERE ur.account_id=? AND {session_clause} ORDER BY ur.created_at DESC LIMIT ? OFFSET ?",usage_select()),&args)?;return Ok(json!({"records":rows,"total":total,"offset":0,"limit":200}));}
     Err(format!("Tauri API route not implemented: {} {}",request.method,path))
 }
 
@@ -263,6 +305,35 @@ mod tests {
   #[test]
   fn migrates_legacy_usage_columns() {
     let directory=tempfile::tempdir().unwrap();let path=directory.path().join("legacy.db");let conn=Connection::open(&path).unwrap();conn.execute_batch("CREATE TABLE opencode_accounts(id TEXT PRIMARY KEY,name TEXT NOT NULL,workspace_id TEXT NOT NULL,resolved_workspace_id TEXT,auth_cookie TEXT NOT NULL,show_rolling INTEGER NOT NULL DEFAULT 1,show_weekly INTEGER NOT NULL DEFAULT 1,show_monthly INTEGER NOT NULL DEFAULT 1,enabled INTEGER NOT NULL DEFAULT 1,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);CREATE TABLE usage_records(usg_id TEXT PRIMARY KEY,account_id TEXT NOT NULL,workspace_id TEXT NOT NULL,created_at TEXT NOT NULL,model TEXT NOT NULL,provider TEXT,input_tokens INTEGER NOT NULL,output_tokens INTEGER NOT NULL,cache_read_tokens INTEGER NOT NULL DEFAULT 0,cache_write_5m_tokens INTEGER NOT NULL DEFAULT 0,cache_write_1h_tokens INTEGER NOT NULL DEFAULT 0,cost_raw INTEGER NOT NULL,cost_usd REAL NOT NULL,key_id TEXT,plan TEXT,synced_at TEXT NOT NULL);CREATE TABLE usage_sync_state(account_id TEXT PRIMARY KEY,last_sync_at TEXT,last_sync_status TEXT,last_sync_error TEXT,last_inserted_count INTEGER NOT NULL DEFAULT 0,deepest_page_fetched INTEGER NOT NULL DEFAULT -1,total_records INTEGER NOT NULL DEFAULT 0,oldest_record_at TEXT,newest_record_at TEXT);PRAGMA user_version=1;").unwrap();drop(conn);initialize(&path).unwrap();let conn=Connection::open(&path).unwrap();let columns:Vec<String>=conn.prepare("PRAGMA table_info(usage_records)").unwrap().query_map([],|row|row.get(1)).unwrap().collect::<Result<_,_>>().unwrap();assert!(columns.contains(&"reasoning_tokens".into()));assert!(columns.contains(&"project_path".into()));assert_eq!(conn.query_row("PRAGMA user_version",[],|row|row.get::<_,i64>(0)).unwrap(),SCHEMA_VERSION);
+  }
+  #[test]
+  fn fresh_settings_default_to_minimal_flags() {
+    let directory=tempfile::tempdir().unwrap();let path=directory.path().join("fresh.db");
+    let settings=load_settings(&path);
+    assert!(!features::is_enabled(&settings,TOKEN_STATS));
+    assert!(!features::is_enabled(&settings,QUOTA_INTELLIGENCE));
+    assert_eq!(settings["feature_legacy_prompt_pending"],json!(false));
+  }
+  #[test]
+  fn legacy_settings_keep_full_flags_and_raise_one_time_hint() {
+    let directory=tempfile::tempdir().unwrap();let path=directory.path().join("legacy-settings.db");
+    let conn=Connection::open(&path).unwrap();
+    conn.execute_batch("CREATE TABLE service_settings(id INTEGER PRIMARY KEY CHECK(id=1),payload TEXT NOT NULL,updated_at TEXT NOT NULL);INSERT INTO service_settings(id,payload,updated_at) VALUES(1,'{\"timezone\":\"UTC\",\"usage_sync\":{\"auto_sync\":false}}','2026-01-01T00:00:00Z');").unwrap();
+    drop(conn);
+    let settings=load_settings(&path);
+    assert_eq!(settings["timezone"],json!("UTC"));
+    assert_eq!(settings["usage_sync"]["auto_sync"],json!(false));
+    for key in features::FEATURE_KEYS { assert!(features::is_enabled(&settings,key),"{key} should stay enabled for legacy profiles"); }
+    assert_eq!(settings["feature_legacy_prompt_pending"],json!(true));
+  }
+  #[test]
+  fn feature_guard_rejects_disabled_groups() {
+    let directory=tempfile::tempdir().unwrap();let path=directory.path().join("guard.db");
+    let settings=Mutex::new(default_settings());
+    let state=BackendState{db_path:path,settings};
+    assert!(require_feature(&state,DATA_TOOLS).is_err());
+    state.settings.lock().unwrap()["feature_flags"][DATA_TOOLS]=json!(true);
+    assert!(require_feature(&state,DATA_TOOLS).is_ok());
   }
   #[test]
   fn converts_records_with_iana_timezone_and_dst() {

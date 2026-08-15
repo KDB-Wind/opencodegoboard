@@ -5,6 +5,7 @@ use tauri::{Emitter, Manager, menu::{Menu,MenuItem}, tray::{MouseButton,MouseBut
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 mod backend;
+mod features;
 mod quota;
 mod usage;
 mod secrets;
