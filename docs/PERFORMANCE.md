@@ -12,10 +12,10 @@ Results are machine-dependent and must be captured from the final packaged Tauri
 
 ## 2026-08-15 final Tauri release baseline
 
-- Release executable: 7,894,528 bytes (7.53 MiB)
-- NSIS online installer: 3,149,908 bytes (3.00 MiB)
-- Cold start to first window: 195 ms
-- Settled process tree: 7 processes, 136.40 MiB private memory, 364.45 MiB working set
+- Release executable: 9,171,968 bytes (8.75 MiB), including IANA time-zone and daylight-saving data
+- NSIS online installer: 3,214,034 bytes (3.07 MiB)
+- Cold start to first window: 243 ms
+- Settled process tree: 7 processes, 138.06 MiB private memory, 365.17 MiB working set
 - Rows: 100,000
 - Transactional fixture insertion: 1,236.53 ms
 - Representative aggregation latency: median 70.20 ms, p95 87.04 ms
