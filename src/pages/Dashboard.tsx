@@ -168,6 +168,12 @@ export function Dashboard() {
   const { data, loading, refetch: refetchDashboard } = usePolling((signal) => api.getDashboard('30d', signal), 30000);
   const timezone = data?.timezone || DEFAULT_TIMEZONE;
 
+  const { data: quotaUnitsData } = usePolling(
+    (signal) => api.getQuotaUnits('30d', undefined, signal),
+    60000,
+    flags.quota_intelligence,
+  );
+
   const { data: todayData, refetch: refetchToday } = usePolling(
     (signal) => api.getModelTokenStats(1, undefined, 'today', signal),
     60000,
@@ -179,6 +185,15 @@ export function Dashboard() {
     flags.token_stats,
     [topPeriod],
   );
+
+  // The quota network refresh is now non-blocking; refetch local snapshots
+  // once after the background refresh has had time to land.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void refetchDashboard();
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [refetchDashboard]);
 
   const handleSyncAll = async () => {
     if (syncing) return;
@@ -240,7 +255,7 @@ export function Dashboard() {
       0,
     );
     const totalCost = tokens.reduce((s, m) => s + m.total_cost_usd, 0);
-    const quotaUnits = data?.quota_units?.total_quota_units;
+    const quotaUnits = quotaUnitsData?.total_quota_units;
     const cards = [
       { label: t('dashboard.account'), value: overview?.account_count ?? '-', sub: t('dashboard.availableBlocked', { available: overview?.success_count ?? 0, blocked: overview?.blocked_count ?? 0 }), breakdown: null, size: 'sm' },
       { label: t('dashboard.bottleneckQuota'), value: overview?.bottleneck ? `${overview.bottleneck.remaining}%` : '-', sub: overview?.bottleneck ? `${overview.bottleneck.name} · ${overview.bottleneck.window}` : t('dashboard.noBottleneck'), breakdown: null, size: 'sm' },
@@ -279,7 +294,7 @@ export function Dashboard() {
       });
     }
     return cards;
-  }, [overview, tokens, todayTokens, data?.quota_units?.total_quota_units, flags.quota_intelligence, t, i18n.language, timezone]);
+  }, [overview, tokens, todayTokens, quotaUnitsData?.total_quota_units, flags.quota_intelligence, t, i18n.language, timezone]);
 
   if (loading && !data) {
     return (

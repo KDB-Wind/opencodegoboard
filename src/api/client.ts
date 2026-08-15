@@ -134,8 +134,9 @@ export const api = {
   calibrateQuotaWeights: (accountId?: string) => post<{ created: QuotaWeightRule[] }>(
     `/quota/weights/calibrate${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ''}`,
   ),
-  getQuotaUnits: (period = '30d', accountId?: string) => get<QuotaUnitStats>(
+  getQuotaUnits: (period = '30d', accountId?: string, signal?: AbortSignal) => get<QuotaUnitStats>(
     `/quota/units?period=${encodeURIComponent(period)}${accountId ? `&account_id=${encodeURIComponent(accountId)}` : ''}`,
+    signal,
   ),
   getRecommendations: () => get<UsageRecommendation>('/recommendations'),
   getAccountQuota: (id: string) => get<QuotaAccount>(`/accounts/opencode/${id}/quota`),
@@ -163,10 +164,6 @@ export const api = {
       : `&session_id=${encodeURIComponent(sessionId)}`;
     return get<UsageResponse>(path);
   },
-  updateSessionContext: (context: {
-    account_id: string; session_id: string; project_name?: string | null;
-    project_path?: string | null; title?: string | null;
-  }) => put<Record<string, unknown>>('/usage/session-context', context),
   getProjectUsage: (accountId?: string) => get<{ projects: ProjectUsageStat[] }>(
     `/analytics/opencode/projects${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ''}`,
   ),

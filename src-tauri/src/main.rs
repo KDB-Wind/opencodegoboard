@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager, menu::{Menu,MenuItem}, tray::{MouseButton,MouseButtonState,TrayIconBuilder,TrayIconEvent}, WindowEvent};
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
@@ -91,7 +91,7 @@ fn main() {
             backend::initialize(&db_path).map_err(std::io::Error::other)?;
             backend::migrate_legacy_credentials(&db_path).map_err(std::io::Error::other)?;
             let settings = backend::load_settings(&db_path);
-            app.manage(backend::BackendState { db_path, settings: Mutex::new(settings) });
+            app.manage(backend::BackendState { db_path, settings: Arc::new(Mutex::new(settings)), quota_refresh_running: Arc::new(Mutex::new(false)), quota_last_refresh: Arc::new(Mutex::new(None)) });
             let background_app=app.handle().clone();tauri::async_runtime::spawn(async move{loop{let(interval,enabled,path)={let state=background_app.state::<backend::BackendState>();let settings=state.settings.lock().expect("settings lock");(settings["usage_sync"]["interval_sec"].as_u64().unwrap_or(300).max(60),settings["usage_sync"]["auto_sync"].as_bool().unwrap_or(true),state.db_path.clone())};tokio::time::sleep(std::time::Duration::from_secs(interval)).await;if !enabled{continue}if let Ok(ids)=backend::enabled_account_ids(&path){for id in ids{let _=usage::sync(&path,&id,30,None).await;}}}});
             let show=MenuItem::with_id(app,"show","显示窗口",true,None::<&str>)?;let quit=MenuItem::with_id(app,"quit","退出",true,None::<&str>)?;let menu=Menu::with_items(app,&[&show,&quit])?;
             TrayIconBuilder::new().icon(app.default_window_icon().ok_or("missing application icon")?.clone()).tooltip("OpenCodeGoBoard").menu(&menu).on_menu_event(|app,event|match event.id.as_ref(){"show"=>{if let Some(window)=app.get_webview_window("main"){let _=window.show();let _=window.set_focus();}},"quit"=>app.exit(0),_=>{}}).on_tray_icon_event(|tray,event|{if let TrayIconEvent::Click{button:MouseButton::Left,button_state:MouseButtonState::Up,..}=event{let app=tray.app_handle();if let Some(window)=app.get_webview_window("main"){let _=window.show();let _=window.set_focus();}}}).build(app)?;

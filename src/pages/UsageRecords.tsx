@@ -32,7 +32,7 @@ export function UsageRecords() {
     30000,
     view === 'sessions',
   );
-  const { data: projectData, refetch: refetchProjects } = usePolling(
+  const { data: projectData } = usePolling(
     () => api.getProjectUsage(accountId || undefined), 60000, view === 'sessions', [accountId],
   );
 
@@ -57,22 +57,6 @@ export function UsageRecords() {
     } finally {
       setDetailLoading(false);
     }
-  }
-
-  async function editSessionContext(session: UsageSession) {
-    if (!session.session_id) return;
-    const projectName = window.prompt(t('usageRecords.projectNamePrompt'), session.project_name ?? '');
-    if (projectName == null) return;
-    const projectPath = window.prompt(t('usageRecords.projectPathPrompt'), session.project_path ?? '');
-    if (projectPath == null) return;
-    const title = window.prompt(t('usageRecords.sessionTitlePrompt'), session.session_title ?? '');
-    if (title == null) return;
-    await api.updateSessionContext({
-      account_id: session.account_id, session_id: session.session_id,
-      project_name: projectName, project_path: projectPath, title,
-    });
-    refetchSessions();
-    refetchProjects();
   }
 
   return (
@@ -144,7 +128,6 @@ export function UsageRecords() {
                   <td className="max-w-52">
                     <div className="flex items-center gap-2">
                       <span className="truncate">{session.project_name || session.project_path || t('usageRecords.unassigned')}</span>
-                      {session.session_id && <button className="btn btn-ghost btn-xs" onClick={(event) => { event.stopPropagation(); editSessionContext(session); }}>{t('usageRecords.linkProject')}</button>}
                     </div>
                     {session.session_title && <div className="text-xs text-muted truncate">{session.session_title}</div>}
                   </td>
