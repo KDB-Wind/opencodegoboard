@@ -1,26 +1,76 @@
 # OpenCodeGoBoard
 
-OpenCodeGoBoard 是一个本地优先的 OpenCode Go 额度与用量决策工具。它不仅展示剩余额度，还会结合官方窗口快照和本地记录回答：哪个窗口最先耗尽、能否撑到重置、应选择哪个账号/模型，以及本地记录是否完整。
+**English** · [简体中文](README_zh.md)
 
-主要能力：
+OpenCodeGoBoard is a local-first quota and usage decision tool for OpenCode Go. It combines official quota windows with locally synchronized usage to explain which limit is the bottleneck, whether quota can last until reset, which account or model is safer to use, and whether local history is complete.
 
-- 多账户配额、瓶颈窗口、续航预测和安全预算
-- 用量同步、会话/项目归属、Token/成本/缓存分析
-- 官方额度与本地记录对账、模型额度权重自动校准
-- 默认关闭的阈值通知、脱敏诊断包、CSV 导出和数据库备份恢复
-- Tauri + Rust + SQLite，无 Electron、Hono 或本地 HTTP 端口
-- 系统凭据库保存 Cookie；可迁移旧版 SQLite 与 Windows DPAPI 凭据
+## Highlights
 
-## 本地开发
+- Multi-account quota, bottleneck windows, endurance forecasts, and safe budgets
+- Usage sync, session/project attribution, token/cost/cache analytics
+- Official-versus-local reconciliation and automatic model-weight calibration
+- Optional threshold notifications, redacted diagnostics, CSV export, and validated backup/restore
+- English and Chinese interfaces with IANA time-zone analytics and daylight-saving support
+- Tauri + Rust + SQLite, with no Electron, Hono, Bun backend, or localhost HTTP service
+- Auth Cookies stored in the Windows credential vault rather than the application database
 
-需要 Node.js、pnpm、Rust 和 Windows WebView2 开发环境。
+## Quick start
+
+1. Open **Settings → OpenCode Accounts → Add Account**.
+2. Sign in through the system browser, copy the `auth` cookie from `https://opencode.ai`, and paste it into **Auth Cookie**.
+3. Select **Test** to verify the account, then **Sync** to fetch recent usage.
+4. Use **Backfill** when you need older records. Choose recent days, an end date, or all history before starting it.
+5. If a cookie expires, select **Edit** or **Reauthorize**. Updating an existing account preserves its usage history.
+
+## Application guide
+
+### 1. Dashboard
+
+The Dashboard is the daily decision view. It shows account availability, the earliest quota bottleneck, current quota windows, reset times, recent token usage, data health, reconciliation events, and account/model recommendations.
+
+Use **Sync all** when you need fresh data immediately. Forecasts need multiple quota snapshots; “insufficient data” is expected for a newly added account.
+
+### 2. Token Analytics
+
+Token Analytics compares input, output, reasoning, cache reads, cost, request count, models, daily trends, and hourly distribution. Use the period and account selectors to narrow the analysis. Day boundaries and hourly buckets follow the time zone selected in Settings.
+
+### 3. Usage Records
+
+Usage Records provides two views:
+
+- **Sessions** groups requests by session and project. A session can be linked to a local project name, directory, and title.
+- **Records** shows individual requests, models, token breakdowns, costs, accounts, and timestamps.
+
+Account filters and pagination apply to both views. Project cards summarize cost, cache rate, and model composition.
+
+### 4. Settings
+
+Settings contains the operational controls:
+
+- **Language:** choose English, Chinese, or follow the operating system.
+- **Time zone:** defaults to `Asia/Shanghai`; choose any available IANA zone such as `America/New_York`. It changes Today, daily/hourly analytics, period boundaries, and displayed timestamps.
+- **Appearance and readability:** select theme, density, or high contrast.
+- **System behavior:** configure tray behavior and optional quota notifications. Notifications are off by default.
+- **Accounts:** add, enable/disable, test, edit/reauthorize, sync, backfill, or delete an account. Deleting an account also deletes its related local history; use Edit when only the cookie changed.
+- **Auto sync:** choose whether synchronization runs in the background and set its interval.
+- **History backfill:** select recent N days, a cutoff date, or all history. Backfill stops at the selected target or the end of available history.
+- **Data management:** export CSV, create a full SQLite backup, restore a validated backup, or download a redacted diagnostic report.
+- **Backend and updates:** inspect Tauri IPC health, restart the application, and check the configured signed-update source.
+
+## Privacy and data
+
+Usage and quota data stay in a local SQLite database. Account credentials are stored in Windows Credential Manager. Diagnostic exports omit credentials and raw account secrets. Back up the database before deleting accounts or restoring another database.
+
+## Development
+
+Install Node.js, pnpm, Rust, and the Windows WebView2 development prerequisites.
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-验证与打包：
+Validation and packaging:
 
 ```bash
 pnpm test
@@ -30,17 +80,15 @@ pnpm benchmark:db
 pnpm dist
 ```
 
-NSIS 安装包位于 `src-tauri/target/release/bundle/nsis/`。签名更新、校验和和回滚步骤见 [docs/RELEASE.md](docs/RELEASE.md)，路线与完成状态见 [docs/ROADMAP.md](docs/ROADMAP.md)。
+The NSIS installer is written to `src-tauri/target/release/bundle/nsis/`. See [docs/RELEASE.md](docs/RELEASE.md) for signing, updater, checksums, and rollback; [docs/ROADMAP.md](docs/ROADMAP.md) for delivery status; and [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for measured baselines.
 
-## 架构
+## Architecture
 
 ```text
-src/                  React/Vite UI 与统一 IPC API 门面
-src-tauri/src/        Rust 命令、SQLite、同步、配额与系统集成
-scripts/              脱敏、无障碍、基准和发布校验工具
-docs/                 产品路线、性能、无障碍和发布说明
+src/                  React/Vite interface and typed Tauri IPC client
+src-tauri/src/        Rust commands, SQLite, sync, quota logic, and system integration
+scripts/              Redaction, accessibility, benchmark, and release checks
+docs/                 Roadmap, constraints, performance, accessibility, and release notes
 ```
 
-本项目是独立开发的新项目，但初始工作基线包含 MIT 许可代码。归属和项目状态见 [NOTICE.md](NOTICE.md)，原版权声明保留在 [LICENSE](LICENSE)。公开发布前仍应完成真实账号和干净 Windows VM 验收。
-
-[English](README_en.md)
+This is an independently developed project whose initial working baseline contains MIT-licensed code. See [NOTICE.md](NOTICE.md) and [LICENSE](LICENSE) for attribution. A real-account and clean-Windows-VM acceptance pass is required before a public release.
