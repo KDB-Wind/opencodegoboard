@@ -284,7 +284,6 @@ export interface ServiceConfig {
     token_stats: boolean;
     usage_records: boolean;
     quota_intelligence: boolean;
-    data_tools: boolean;
     advanced_sync: boolean;
   };
   feature_legacy_prompt_pending: boolean;

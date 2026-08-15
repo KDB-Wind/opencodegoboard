@@ -7,16 +7,11 @@ import type {
   QuotaAccount,
   QuotaSnapshot,
   QuotaIntelligence,
-  QuotaReconciliationEvent,
   QuotaWeightRule,
-  QuotaUnitStats,
-  UsageRecommendation,
   ServiceConfig,
   UsageRecord,
   UsageResponse,
   UsageDataHealth,
-  UsageSession,
-  ProjectUsageStat,
   ModelQuotaTier,
 } from './types';
 import { invoke } from '@tauri-apps/api/core';
@@ -69,17 +64,6 @@ async function del<T>(path: string): Promise<T> {
   return result;
 }
 
-async function download(path: string, filename: string): Promise<void> {
-  const payload = await invoke<{ base64: string; mime: string; filename?: string }>('api_request', { request: { method: 'GET', path, body: null } });
-  const bytes = Uint8Array.from(atob(payload.base64), (char) => char.charCodeAt(0));
-  const url = URL.createObjectURL(new Blob([bytes], { type: payload.mime }));
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = payload.filename || filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
 export const api = {
   // Consolidated dashboard (overview + quota + recent usage in one call)
   getDashboard: (period = '30d', signal?: AbortSignal) => get<{
@@ -90,9 +74,6 @@ export const api = {
     equivalent_cost_usd: number;
     data_health: UsageDataHealth[];
     quota_intelligence: QuotaIntelligence[];
-    quota_reconciliation: QuotaReconciliationEvent[];
-    quota_units: QuotaUnitStats | null;
-    recommendations: UsageRecommendation | null;
     period: string;
     timezone: string;
   }>(`/dashboard?period=${period}`, signal),
@@ -125,9 +106,6 @@ export const api = {
   getQuotaIntelligence: (accountId?: string) => get<{ windows: QuotaIntelligence[] }>(
     `/quota/intelligence${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ''}`,
   ),
-  getQuotaReconciliation: (accountId?: string) => get<{ events: QuotaReconciliationEvent[] }>(
-    `/quota/reconciliation${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ''}`,
-  ),
   getQuotaWeightRules: () => get<{ rules: QuotaWeightRule[] }>('/quota/weights'),
   createQuotaWeightRule: (rule: {
     account_id?: string | null; plan?: string | null; model_pattern: string;
@@ -147,11 +125,6 @@ export const api = {
   }) => post<ModelQuotaTier>('/model-quotas', data),
   deleteModelQuota: (modelKey: string) =>
     del<{ ok: boolean }>(`/model-quotas/${encodeURIComponent(modelKey)}`),
-  getQuotaUnits: (period = '30d', accountId?: string, signal?: AbortSignal) => get<QuotaUnitStats>(
-    `/quota/units?period=${encodeURIComponent(period)}${accountId ? `&account_id=${encodeURIComponent(accountId)}` : ''}`,
-    signal,
-  ),
-  getRecommendations: () => get<UsageRecommendation>('/recommendations'),
   getAccountQuota: (id: string) => get<QuotaAccount>(`/accounts/opencode/${id}/quota`),
 
   // Usage Records
@@ -165,21 +138,6 @@ export const api = {
     if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
     return get<UsageResponse>(path, signal);
   },
-  getUsageSessions: (offset = 0, limit = 50, accountId?: string, signal?: AbortSignal) => {
-    let path = `/usage/sessions?offset=${offset}&limit=${limit}`;
-    if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
-    return get<{ sessions: UsageSession[]; total: number; offset: number; limit: number }>(path, signal);
-  },
-  getSessionUsage: (accountId: string, sessionId: string | null) => {
-    let path = `/usage/session-records?account_id=${encodeURIComponent(accountId)}&limit=200`;
-    path += sessionId == null
-      ? '&unassigned=true'
-      : `&session_id=${encodeURIComponent(sessionId)}`;
-    return get<UsageResponse>(path);
-  },
-  getProjectUsage: (accountId?: string) => get<{ projects: ProjectUsageStat[] }>(
-    `/analytics/opencode/projects${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ''}`,
-  ),
   syncUsage: (id: string) =>
     post<{ inserted: number; pages_fetched: number; sync_at: string }>(
       `/accounts/opencode/${id}/usage/sync`,
@@ -200,9 +158,11 @@ export const api = {
 
   // Analytics
   getOverview: () => get<Overview>('/analytics/overview'),
-  getDailyStats: (days = 30, accountId?: string, signal?: AbortSignal) => {
+  getDailyStats: (days = 30, accountId?: string, signal?: AbortSignal, from?: string, to?: string) => {
     let path = `/analytics/opencode/daily?days=${days}`;
     if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
+    if (from) path += `&from=${encodeURIComponent(from)}`;
+    if (to) path += `&to=${encodeURIComponent(to)}`;
     return get<{ days: number; stats: DailyStat[] }>(path, signal);
   },
   getHourlyStats: (accountId?: string, signal?: AbortSignal) => {
@@ -215,10 +175,12 @@ export const api = {
     if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
     return get<{ days: number; stats: DailyModelStat[] }>(path, signal);
   },
-  getModelTokenStats: (days = 30, accountId?: string, period?: string, signal?: AbortSignal) => {
+  getModelTokenStats: (days = 30, accountId?: string, period?: string, signal?: AbortSignal, from?: string, to?: string) => {
     let path = `/analytics/opencode/model-tokens?days=${days}`;
     if (period) path += `&period=${encodeURIComponent(period)}`;
     if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
+    if (from) path += `&from=${encodeURIComponent(from)}`;
+    if (to) path += `&to=${encodeURIComponent(to)}`;
     return get<{ days: number; stats: ModelTokenStat[]; equivalent_cost_usd: number }>(path, signal);
   },
 
@@ -229,19 +191,4 @@ export const api = {
   // Health
   health: () => get<{ status: string }>('/health'),
   dataHealth: () => get<{ accounts: UsageDataHealth[] }>('/health/data'),
-
-  // Data portability
-  exportUsageCsv: () => download('/data/export.csv', 'opencodegoboard-usage.csv'),
-  backupDatabase: () => download('/data/backup', 'opencodegoboard-backup.db'),
-  downloadDiagnostics: () => download('/data/diagnostics', 'opencodegoboard-diagnostics.json'),
-  restoreDatabase: async (file: File) => {
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    let binary = '';
-    for (const byte of bytes) binary += String.fromCharCode(byte);
-    const result = await invoke<{ ok: boolean; schema_version: number }>('api_request', {
-      request: { method: 'POST', path: '/data/restore', body: { base64: btoa(binary) } },
-    });
-    responseCache.clear();
-    return result;
-  },
 };

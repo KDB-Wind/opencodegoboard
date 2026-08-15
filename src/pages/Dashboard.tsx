@@ -160,19 +160,14 @@ export function Dashboard() {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { flags } = useFeatureFlags();
-  const [topPeriod, setTopPeriod] = useState<TimeRange>(getStoredTimeRange);
+  const initialTopPeriod = getStoredTimeRange();
+  const [topPeriod, setTopPeriod] = useState<TimeRange>(initialTopPeriod === 'custom' ? '30d' : initialTopPeriod);
   const [syncing, setSyncing] = useState(false);
   useEffect(() => {
     storeTimeRange(topPeriod);
   }, [topPeriod]);
   const { data, loading, refetch: refetchDashboard } = usePolling((signal) => api.getDashboard('30d', signal), 30000);
   const timezone = data?.timezone || DEFAULT_TIMEZONE;
-
-  const { data: quotaUnitsData } = usePolling(
-    (signal) => api.getQuotaUnits('30d', undefined, signal),
-    60000,
-    flags.quota_intelligence,
-  );
 
   const { data: todayData, refetch: refetchToday } = usePolling(
     (signal) => api.getModelTokenStats(1, undefined, 'today', signal),
@@ -231,8 +226,6 @@ export function Dashboard() {
     (health) => !health.healthy && health.last_sync_status != null,
   );
   const quotaIntelligence = data?.quota_intelligence ?? [];
-  const reconciliationEvents = (data?.quota_reconciliation ?? []).filter((event) => event.event_type !== 'matched');
-  const recommendation = data?.recommendations;
   useEffect(() => {
     void notifyQuotaAlert(quotaIntelligence, t('dashboard.notificationTitle'));
   }, [quotaIntelligence, t]);
@@ -255,7 +248,6 @@ export function Dashboard() {
       0,
     );
     const totalCost = tokens.reduce((s, m) => s + m.total_cost_usd, 0);
-    const quotaUnits = quotaUnitsData?.total_quota_units;
     const cards = [
       { label: t('dashboard.account'), value: overview?.account_count ?? '-', sub: t('dashboard.availableBlocked', { available: overview?.success_count ?? 0, blocked: overview?.blocked_count ?? 0 }), breakdown: null, size: 'sm' },
       { label: t('dashboard.bottleneckQuota'), value: overview?.bottleneck ? `${overview.bottleneck.remaining}%` : '-', sub: overview?.bottleneck ? `${overview.bottleneck.name} · ${overview.bottleneck.window}` : t('dashboard.noBottleneck'), breakdown: null, size: 'sm' },
@@ -286,22 +278,13 @@ export function Dashboard() {
       {
         label: t('dashboard.equivalentCost'),
         value: data ? `$${(data.equivalent_cost_usd ?? 0).toFixed(4)}` : '-',
-        sub: t('dashboard.equivalentCostDesc'),
+        sub: undefined,
         breakdown: null,
         size: 'md',
       },
     ];
-    if (flags.quota_intelligence) {
-      cards.push({
-        label: t('dashboard.quotaUnits'),
-        value: quotaUnits == null ? '-' : quotaUnits.toFixed(2),
-        sub: t('dashboard.quotaUnitsDesc'),
-        breakdown: null,
-        size: 'md',
-      });
-    }
     return cards;
-  }, [overview, tokens, todayTokens, quotaUnitsData?.total_quota_units, data?.equivalent_cost_usd, flags.quota_intelligence, t, i18n.language, timezone]);
+  }, [overview, tokens, todayTokens, data?.equivalent_cost_usd, t, i18n.language, timezone]);
 
   if (loading && !data) {
     return (
@@ -342,24 +325,6 @@ export function Dashboard() {
         </div>
       )}
 
-      {flags.quota_intelligence && (recommendation?.account || recommendation?.model) && (
-        <div className="alert border-primary/30 bg-primary/5 py-3" role="status">
-          <div>
-            <div className="font-semibold">{t('dashboard.recommendationTitle')}</div>
-            <div className="text-sm mt-1">
-              {recommendation.account && t('dashboard.recommendAccount', {
-                account: recommendation.account.name,
-                remaining: recommendation.account.bottleneck_remaining,
-                reason: t(`dashboard.reason_${recommendation.account.reason_code}`),
-              })}
-              {recommendation.model && ` · ${t('dashboard.recommendModel', {
-                model: recommendation.model.model, weight: recommendation.model.weight,
-              })}`}
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {hero.map((h) => (
           <div key={h.label} className="border border-base-200 rounded-xl px-3 py-2.5">
@@ -371,65 +336,10 @@ export function Dashboard() {
             ) : (
               <div className={`font-bold mt-0.5 ${h.size === 'sm' ? 'text-xl' : 'text-2xl'}`}>{h.value}</div>
             )}
-            <div className="text-xs text-muted mt-0.5 truncate">{h.sub}</div>
+            {h.sub ? <div className="text-xs text-muted mt-0.5 truncate">{h.sub}</div> : null}
           </div>
         ))}
       </div>
-
-      {flags.quota_intelligence && (
-      <div className="border border-base-200 rounded-xl p-4">
-        <div className="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-3">{t('dashboard.enduranceTitle')}</div>
-        {quotaIntelligence.length === 0 ? (
-          <div className="text-sm text-muted py-3">{t('dashboard.enduranceNoSnapshots')}</div>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-3">
-            {quotaIntelligence.slice(0, 3).map((window) => (
-              <div key={`${window.account_id}:${window.window_label}`} className="rounded-lg border border-base-200 p-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-semibold text-sm truncate">{window.account_name}</span>
-                  <div className="flex items-center gap-1">
-                    <span className={`badge badge-sm ${window.alert_level === 'critical' ? 'badge-error' : window.alert_level === 'warning' ? 'badge-warning' : 'badge-ghost'}`}>{t(`dashboard.alert_${window.alert_level}`)}</span>
-                    <span className="badge badge-ghost badge-sm">{window.window_label}</span>
-                  </div>
-                </div>
-                {window.hours_to_exhaust == null ? (
-                  <div className="text-sm text-muted mt-2">{t('dashboard.enduranceInsufficient')}</div>
-                ) : (
-                  <>
-                    <div className={`text-lg font-bold mt-2 ${window.can_last_until_reset ? 'text-success' : 'text-error'}`}>
-                      {window.can_last_until_reset ? t('dashboard.enduranceCanLast') : t('dashboard.enduranceCannotLast')}
-                    </div>
-                    <div className="text-xs text-muted mt-1">
-                      {t('dashboard.enduranceHours', { exhaust: window.hours_to_exhaust, reset: window.hours_to_reset })}
-                    </div>
-                  </>
-                )}
-                <div className="text-xs text-subtle mt-2">{t('dashboard.enduranceConfidence', { level: t(`dashboard.confidence_${window.confidence}`), count: window.sample_count })}</div>
-                <div className="text-xs text-muted mt-1">{t('dashboard.safeBudget', { budget: window.safe_budget_per_day, reserve: window.reserve_percent })}</div>
-                {window.acceleration_ratio != null && window.acceleration_ratio >= 1.5 && (
-                  <div className="text-xs text-warning mt-1" role="status">{t('dashboard.accelerationWarning', { ratio: window.acceleration_ratio })}</div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      )}
-
-      {flags.quota_intelligence && reconciliationEvents.length > 0 && (
-        <div className="border border-base-200 rounded-xl p-4">
-          <div className="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-3">{t('dashboard.reconciliationTitle')}</div>
-          <div className="space-y-2">
-            {reconciliationEvents.slice(0, 5).map((event) => (
-              <div key={`${event.account_id}:${event.window_label}:${event.to}`} className="flex items-center gap-3 text-sm">
-                <span className="badge badge-outline badge-sm">{t(`dashboard.reconcile_${event.event_type}`)}</span>
-                <span className="font-medium">{event.account_name} · {event.window_label}</span>
-                <span className="text-muted ml-auto">{new Date(event.to).toLocaleString(undefined, { timeZone: timezone })}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className={flags.token_stats ? 'flex gap-4' : ''}>
         <div className={`${flags.token_stats ? 'flex-1 ' : ''}border border-base-200 rounded-xl p-4 flex flex-col min-h-0`}>

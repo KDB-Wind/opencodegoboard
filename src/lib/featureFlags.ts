@@ -2,7 +2,6 @@ export const FEATURE_KEYS = [
   'token_stats',
   'usage_records',
   'quota_intelligence',
-  'data_tools',
   'advanced_sync',
 ] as const;
 
@@ -14,7 +13,6 @@ export const MINIMAL_FEATURE_FLAGS: FeatureFlags = {
   token_stats: false,
   usage_records: false,
   quota_intelligence: false,
-  data_tools: false,
   advanced_sync: false,
 };
 
@@ -22,7 +20,6 @@ export const FULL_FEATURE_FLAGS: FeatureFlags = {
   token_stats: true,
   usage_records: true,
   quota_intelligence: true,
-  data_tools: true,
   advanced_sync: true,
 };
 

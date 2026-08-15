@@ -49,7 +49,10 @@
     "today": "今天",
     "7days": "近 7 天",
     "30days": "近 30 天",
-    "all": "全部"
+    "all": "全部",
+    "custom": "自定义",
+    "customFrom": "开始日期",
+    "customTo": "结束日期"
   },
   "dashboard": {
     "title": "用量统计总览",
@@ -384,11 +387,9 @@
     "token_stats": "用量统计",
     "token_statsDesc": "统计页与总览中的模型 Top 3 图表",
     "usage_records": "用量记录",
-    "usage_recordsDesc": "会话、原始记录与项目下钻页面",
-    "quota_intelligence": "额度智能与提醒",
-    "quota_intelligenceDesc": "续航预测、额度对账、建议、额度单位与桌面提醒",
-    "data_tools": "数据与诊断工具",
-    "data_toolsDesc": "CSV 导出、备份恢复、诊断包、后端状态与检查更新",
+    "usage_recordsDesc": "原始使用记录页面",
+    "quota_intelligence": "额度桌面提醒",
+    "quota_intelligenceDesc": "达到选择的风险级别时提醒一次，默认关闭",
     "advanced_sync": "高级同步",
     "advanced_syncDesc": "历史回填与自动同步间隔设置",
     "saved": "功能设置已保存",

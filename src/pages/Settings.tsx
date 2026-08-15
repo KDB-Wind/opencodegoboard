@@ -11,68 +11,8 @@ import { detectFeaturePreset, FEATURE_KEYS, type FeatureKey } from '../lib/featu
 import { About } from './About';
 import type { OpenCodeAccount } from '../api/types';
 import { loadQuotaNotificationSettings, saveQuotaNotificationSettings, type NotificationThreshold } from '../lib/quotaNotifications';
-import { desktop, isTauri } from '../lib/desktop';
+import { desktop } from '../lib/desktop';
 import { DEFAULT_TIMEZONE, storeTimezone, supportedTimezones } from '../lib/timezone';
-
-function BackendStatus() {
-  const { t } = useTranslation();
-  const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  const [restarting, setRestarting] = useState(false);
-
-  const check = async () => {
-    setStatus('checking');
-    try {
-      const res = await api.health();
-      if (res.status === 'ok') {
-        setStatus('online');
-      } else {
-        setStatus('offline');
-      }
-    } catch {
-      setStatus('offline');
-    }
-  };
-
-  useEffect(() => { check(); }, []);
-
-  const handleRestart = async () => {
-    setRestarting(true);
-    try {
-      await desktop.restartBackend();
-      await new Promise((r) => setTimeout(r, 2000));
-      await check();
-    } finally {
-      setRestarting(false);
-    }
-  };
-
-  const dotColor = status === 'online' ? 'bg-success' : status === 'offline' ? 'bg-error' : 'bg-warning';
-  const label = status === 'online' ? t('settings.running') : status === 'offline' ? t('settings.disconnected') : t('settings.checking');
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${dotColor}`} />
-          <span className="text-sm text-base-content/70">{t('settings.backendStatus')}</span>
-        </div>
-        <span className="text-sm font-medium">{label}</span>
-      </div>
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-base-content/70">{t('settings.backendAddress')}</span>
-        <span className="text-sm font-mono">{isTauri ? t('settings.transportTauri') : t('settings.transportElectron')}</span>
-      </div>
-      <div className="flex gap-2">
-        <button className="btn btn-outline btn-sm" onClick={check}>
-          {t('settings.refreshStatus')}
-        </button>
-        <button className="btn btn-outline btn-sm" onClick={handleRestart} disabled={restarting}>
-          {restarting ? <span className="loading loading-spinner loading-xs" /> : t('settings.restart')}
-        </button>
-      </div>
-    </div>
-  );
-}
 
 export function Settings() {
   const { t, i18n } = useTranslation();
@@ -95,7 +35,6 @@ export function Settings() {
   const [backfillDays, setBackfillDays] = useState(90);
   const [backfillUntil, setBackfillUntil] = useState('');
   const [quotaNotifications, setQuotaNotifications] = useState(loadQuotaNotificationSettings);
-  const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE);
   const timezoneOptions = useMemo(supportedTimezones, []);
   const syncConfigLoadedRef = useRef(false);
@@ -154,7 +93,6 @@ export function Settings() {
   const [editingAccount, setEditingAccount] = useState<OpenCodeAccount | null>(null);
   const addModal = useRef<HTMLDialogElement>(null);
   const deleteModal = useRef<HTMLDialogElement>(null);
-  const restoreInput = useRef<HTMLInputElement>(null);
   const { theme, setTheme, readability, setReadability } = useTheme();
   const { flags, applyPreset, updateFlags } = useFeatureFlags();
   const featurePreset = detectFeaturePreset(flags);
@@ -375,19 +313,6 @@ export function Settings() {
     light: t('settings.light'),
     dark: t('settings.dark'),
     system: t('settings.system'),
-  };
-
-  const restoreBackup = async (file?: File) => {
-    if (!file) return;
-    try {
-      await api.restoreDatabase(file);
-      toast(t('settings.restoreDone'), 'success');
-      refetch();
-    } catch (error) {
-      toast(t('settings.restoreFailed', { msg: (error as Error).message }), 'error');
-    } finally {
-      if (restoreInput.current) restoreInput.current.value = '';
-    }
   };
 
   const setNotificationEnabled = async (enabled: boolean) => {
@@ -722,32 +647,8 @@ export function Settings() {
       </div>
       )}
 
-      {flags.data_tools && (
-      <div className="border border-base-200 rounded-xl p-4" id="backend-status">
-        <h2 className="text-sm font-bold text-base-content/70 mb-4">{t('settings.backend')}</h2>
-        <BackendStatus />
-      </div>
-      )}
-
-      {flags.data_tools && (
-      <div className="border border-base-200 rounded-xl p-4">
-        <h2 className="text-sm font-bold text-base-content/70 mb-2">{t('settings.dataManagement')}</h2>
-        <p className="text-xs text-muted mb-4">{t('settings.dataManagementDesc')}</p>
-        <div className="flex flex-wrap gap-2">
-          <button className="btn btn-outline btn-sm" onClick={() => api.exportUsageCsv()}>{t('settings.exportCsv')}</button>
-          <button className="btn btn-outline btn-sm" onClick={() => api.backupDatabase()}>{t('settings.backupDatabase')}</button>
-          <button className="btn btn-outline btn-sm" onClick={() => api.downloadDiagnostics()}>{t('settings.downloadDiagnostics')}</button>
-          <button className="btn btn-warning btn-outline btn-sm" onClick={() => restoreInput.current?.click()}>{t('settings.restoreDatabase')}</button>
-          <input ref={restoreInput} type="file" accept=".db,.sqlite,.sqlite3" className="hidden" onChange={(event) => restoreBackup(event.target.files?.[0])} />
-        </div>
-      </div>
-      )}
-
       <div className="border border-base-200 rounded-xl p-4">
         <About />
-        {flags.data_tools && (
-        <button className="btn btn-outline btn-sm mt-4" disabled={checkingUpdate} onClick={async()=>{setCheckingUpdate(true);try{const installed=await desktop.installUpdate();toast(t(installed?'settings.updateInstalled':'settings.noUpdate'),'info');}catch(error){toast(t('settings.updateFailed',{msg:(error as Error).message}),'error');}finally{setCheckingUpdate(false)}}}>{checkingUpdate?<span className="loading loading-spinner loading-xs"/>:t('settings.checkUpdates')}</button>
-        )}
       </div>
 
       {flags.advanced_sync && (

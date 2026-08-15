@@ -3,14 +3,12 @@ use serde_json::{json, Map, Value};
 pub const TOKEN_STATS: &str = "token_stats";
 pub const USAGE_RECORDS: &str = "usage_records";
 pub const QUOTA_INTELLIGENCE: &str = "quota_intelligence";
-pub const DATA_TOOLS: &str = "data_tools";
 pub const ADVANCED_SYNC: &str = "advanced_sync";
 
-pub const FEATURE_KEYS: [&str; 5] = [
+pub const FEATURE_KEYS: [&str; 4] = [
     TOKEN_STATS,
     USAGE_RECORDS,
     QUOTA_INTELLIGENCE,
-    DATA_TOOLS,
     ADVANCED_SYNC,
 ];
 
@@ -51,6 +49,10 @@ pub fn ensure_flags(settings: &mut Value, fallback_enabled: bool) {
         if settings["feature_flags"].get(key).is_none() {
             settings["feature_flags"][key] = json!(fallback_enabled);
         }
+    }
+    // Drop retired groups that may still exist in older persisted payloads.
+    if let Some(flags) = settings["feature_flags"].as_object_mut() {
+        flags.retain(|key, _| FEATURE_KEYS.contains(&key.as_str()));
     }
 }
 
@@ -107,5 +109,15 @@ mod tests {
         assert!(validate_patch(&json!({"feature_flags": {"token_stats": true}})).is_ok());
         assert!(validate_patch(&json!({"feature_flags": {"token_stats": "yes"}})).is_err());
         assert!(validate_patch(&json!({"feature_legacy_prompt_pending": 1})).is_err());
+    }
+
+    #[test]
+    fn drops_retired_flag_groups() {
+        let mut settings = json!({"feature_flags": {"data_tools": true}});
+        ensure_flags(&mut settings, false);
+        assert!(settings["feature_flags"].get("data_tools").is_none());
+        for key in FEATURE_KEYS {
+            assert_eq!(settings["feature_flags"][key], json!(false));
+        }
     }
 }

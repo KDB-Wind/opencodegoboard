@@ -49,7 +49,10 @@
     "today": "Today",
     "7days": "Last 7 Days",
     "30days": "Last 30 Days",
-    "all": "All Time"
+    "all": "All Time",
+    "custom": "Custom",
+    "customFrom": "Start date",
+    "customTo": "End date"
   },
   "dashboard": {
     "title": "Usage Dashboard",
@@ -384,11 +387,9 @@
     "token_stats": "Usage Stats",
     "token_statsDesc": "Stats page and the model Top 3 chart on the dashboard",
     "usage_records": "Usage Records",
-    "usage_recordsDesc": "Sessions, raw records, and project drill-down page",
-    "quota_intelligence": "Quota Intelligence & Alerts",
-    "quota_intelligenceDesc": "Endurance forecast, reconciliation, recommendations, quota units, and desktop alerts",
-    "data_tools": "Data & Diagnostic Tools",
-    "data_toolsDesc": "CSV export, backup and restore, diagnostics, backend status, and update checks",
+    "usage_recordsDesc": "Raw usage records page",
+    "quota_intelligence": "Quota Desktop Alerts",
+    "quota_intelligenceDesc": "Alerts once when the selected risk level is reached; off by default",
     "advanced_sync": "Advanced Sync",
     "advanced_syncDesc": "History backfill and auto-sync interval settings",
     "saved": "Feature settings saved",
