@@ -77,3 +77,14 @@
 - 冷启动 195 ms；十万条聚合 p95 87.04 ms。
 - Windows 进程树私有内存 136.40 MiB；包含 WebView2 共享页的工作集 364.45 MiB，作为后续优化基线保留。
 - 正式公开发布仍需由仓库所有者配置更新签名私钥、更新端点和 Windows 代码签名证书。
+
+## 2026-08-15 精简模式（默认极简 + 按需开启）
+
+- [x] 五组功能开关：`token_stats`、`usage_records`、`quota_intelligence`、`data_tools`、`advanced_sync`。
+- [x] 新安装默认极简；老配置迁移保持全开并显示一次性提示。
+- [x] 极简 Dashboard：5 张核心卡、逐账号配额条、最近 10 条用量；隐藏智能区块与模型 Top 3。
+- [x] 极简设置页只保留 9 个核心区块，高级区块随对应开关显示。
+- [x] 开关由 Rust `service_settings.payload.feature_flags` 持久化；极简/完整预设只是动作，持久化的只有组开关。
+- [x] 被关闭功能隐藏路由/区块，后端跳过重计算并拒绝专有接口；基础同步与配额快照采集不受影响。
+- [x] 双语 i18n、Rust/Vitest 测试、`pnpm build` 与 `pnpm a11y:check` 通过。
+- 最终决策与实现位置见 `docs/SIMPLIFY_MODE_HANDOFF.md`。
