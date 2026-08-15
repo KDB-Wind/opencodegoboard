@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { desktop } from '../lib/desktop';
+import { useToast } from './Toast';
 
 const isWindows = desktop.platform === 'win32';
 
 export function TitleBar() {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [isMaximized, setIsMaximized] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -29,8 +31,20 @@ export function TitleBar() {
   }, []);
 
   const handleMaximize = async () => {
-    await desktop.maximize();
-    setIsMaximized(await desktop.isMaximized());
+    try {
+      await desktop.maximize();
+      setIsMaximized(await desktop.isMaximized());
+    } catch (error) {
+      toast(t('titleBar.windowActionFailed', { msg: (error as Error).message }), 'error');
+    }
+  };
+
+  const handleMinimize = async () => {
+    try {
+      await desktop.minimize();
+    } catch (error) {
+      toast(t('titleBar.windowActionFailed', { msg: (error as Error).message }), 'error');
+    }
   };
 
   const handleClose = async () => {
@@ -73,7 +87,7 @@ export function TitleBar() {
           >
             <button
               className="w-[46px] h-full flex items-center justify-center text-base-content/40 hover:bg-base-300 hover:text-base-content transition-colors"
-              onClick={() => desktop.minimize()}
+              onClick={() => void handleMinimize()}
             >
               <svg width="10" height="1" viewBox="0 0 10 1">
                 <rect width="10" height="1" fill="currentColor" />

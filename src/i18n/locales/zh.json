@@ -346,6 +346,7 @@
     "closeDialogTitle": "关闭窗口时...",
     "closeDialogDesc": "你可以将应用最小化到系统托盘，后台继续同步数据。",
     "minimizeToTray": "最小化到托盘",
+    "windowActionFailed": "窗口操作失败：{{msg}}",
     "quitApp": "退出应用"
   },
   "onboarding": {

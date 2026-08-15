@@ -346,6 +346,7 @@
     "closeDialogTitle": "When closing window...",
     "closeDialogDesc": "You can minimize the app to the system tray and continue syncing data in the background.",
     "minimizeToTray": "Minimize to Tray",
+    "windowActionFailed": "Window action failed: {{msg}}",
     "quitApp": "Quit App"
   },
   "onboarding": {
