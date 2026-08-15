@@ -12,6 +12,10 @@
   Disabled features hide routes/blocks, skip backend computation, and reject feature-specific endpoints; base sync and quota snapshot collection continue, and no data is deleted.
 - 新增等效总费用：15 刀月额度档模型 ×4 折算到 60 刀口径，极简模式默认显示；模型额度档位可在设置中维护，默认来源 OpenCode 文档 2026-08-15。
   Added equivalent cost: $15-tier models are ×4 normalized to the $60 tier and shown by default in Minimal mode; model quota tiers are user-maintainable in Settings, seeded from OpenCode docs dated 2026-08-15.
+- 用量趋势的“归一化对比”替换为“等效对比”：同时画实际费用与等效费用两条美元线（今日按小时，其余按天）。
+  Replaced the confusing normalized comparison with an equivalent-cost comparison: actual cost and equivalent cost plotted as two USD lines (hourly for Today, daily otherwise).
+- 修复今日趋势：只统计今天的数据，横坐标/悬浮提示显示真实小时而不再全部是 00:00。
+  Fixed the Today trend to include only today's records and show the real hour labels instead of 00:00 everywhere.
 
 ## v1.2.0 (fork)
 

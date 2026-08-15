@@ -242,7 +242,7 @@ export function TokenStats() {
                 className={`rounded-md font-medium transition-colors whitespace-nowrap px-2 py-0.5 text-[11px] ${mode === 'compare' ? 'bg-primary text-primary-content shadow-sm' : 'text-base-content/60 hover:bg-base-100/70'}`}
                 onClick={() => setMode('compare')}
               >
-                {t('tokenStats.trendCompare')}
+                {t('tokenStats.trendEquivalentCompare')}
               </button>
               <button
                 type="button"

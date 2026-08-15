@@ -46,7 +46,8 @@ fn period_start(days: i64, timezone: &str) -> String {
 fn configure_connection(conn:&Connection)->Result<(),String>{
     let flags=FunctionFlags::SQLITE_UTF8|FunctionFlags::SQLITE_DETERMINISTIC;
     conn.create_scalar_function("tz_date",2,flags,|ctx|{let timestamp:String=ctx.get(0)?;let timezone:String=ctx.get(1)?;Ok(chrono::DateTime::parse_from_rfc3339(&timestamp).map(|value|value.with_timezone(&parse_timezone(&timezone)).format("%Y-%m-%d").to_string()).unwrap_or_default())}).map_err(|e|e.to_string())?;
-    conn.create_scalar_function("tz_hour",2,flags,|ctx|{let timestamp:String=ctx.get(0)?;let timezone:String=ctx.get(1)?;Ok(chrono::DateTime::parse_from_rfc3339(&timestamp).map(|value|value.with_timezone(&parse_timezone(&timezone)).format("%H").to_string()).unwrap_or_default())}).map_err(|e|e.to_string())
+    conn.create_scalar_function("tz_hour",2,flags,|ctx|{let timestamp:String=ctx.get(0)?;let timezone:String=ctx.get(1)?;Ok(chrono::DateTime::parse_from_rfc3339(&timestamp).map(|value|value.with_timezone(&parse_timezone(&timezone)).format("%H").to_string()).unwrap_or_default())}).map_err(|e|e.to_string())?;
+    conn.create_scalar_function("normalize_model",1,flags,|ctx|{let name:String=ctx.get(0)?;Ok(crate::model_quota::normalize_model(&name))}).map_err(|e|e.to_string())
 }
 fn sql_value(value: &Value) -> SqlValue {
     match value { Value::Null => SqlValue::Null, Value::Bool(v) => SqlValue::Integer(*v as i64),
@@ -187,7 +188,7 @@ fn list_usage(conn: &Connection, account: Option<&str>, offset: i64, limit: i64)
 fn period_days(period: &str) -> i64 { match period { "today"=>1,"7d"=>7,"all"=>3650,_=>30 } }
 fn daily_stats(conn:&Connection,days:i64,account:Option<&str>,timezone:&str)->Result<Vec<Value>,String>{
     let mut args=vec![json!(timezone),json!(period_start(days,timezone))]; let extra=if let Some(id)=account{args.push(json!(id));" AND account_id=?"}else{""};
-    query_json(conn,&format!(r#"SELECT tz_date(created_at,?) date,ROUND(SUM(cost_usd),6) total_cost_usd,COUNT(*) request_count,SUM(input_tokens+cache_read_tokens+cache_write_5m_tokens+cache_write_1h_tokens) total_input_tokens,SUM(input_tokens) uncached_input_tokens,SUM(cache_read_tokens) cache_hit_tokens,SUM(cache_write_5m_tokens+cache_write_1h_tokens) cache_write_tokens,SUM(output_tokens) total_output_tokens,SUM(reasoning_tokens) total_reasoning_tokens FROM usage_records WHERE created_at>=?{extra} GROUP BY 1 ORDER BY 1 DESC"#),&args)
+    query_json(conn,&format!(r#"SELECT tz_date(created_at,?) date,ROUND(SUM(cost_usd),6) total_cost_usd,ROUND(SUM(cost_usd*COALESCE((SELECT 60.0/NULLIF(mt.monthly_quota_usd,0) FROM model_quota_tiers mt WHERE mt.model_key=normalize_model(model)),1.0)),6) equivalent_cost_usd,COUNT(*) request_count,SUM(input_tokens+cache_read_tokens+cache_write_5m_tokens+cache_write_1h_tokens) total_input_tokens,SUM(input_tokens) uncached_input_tokens,SUM(cache_read_tokens) cache_hit_tokens,SUM(cache_write_5m_tokens+cache_write_1h_tokens) cache_write_tokens,SUM(output_tokens) total_output_tokens,SUM(reasoning_tokens) total_reasoning_tokens FROM usage_records WHERE created_at>=?{extra} GROUP BY 1 ORDER BY 1 DESC"#),&args)
 }
 
 fn model_stats(conn:&Connection,days:i64,account:Option<&str>,timezone:&str)->Result<Vec<Value>,String>{
@@ -197,7 +198,7 @@ fn model_stats(conn:&Connection,days:i64,account:Option<&str>,timezone:&str)->Re
 
 fn daily_model_stats(conn:&Connection,days:i64,account:Option<&str>,timezone:&str)->Result<Vec<Value>,String>{let mut args=vec![json!(timezone),json!(period_start(days,timezone))];let extra=if let Some(id)=account{args.push(json!(id));" AND account_id=?"}else{""};query_json(conn,&format!(r#"SELECT tz_date(created_at,?) date,model,ROUND(SUM(cost_usd),6) total_cost_usd,COUNT(*) request_count,SUM(input_tokens+cache_read_tokens+cache_write_5m_tokens+cache_write_1h_tokens) total_input_tokens,SUM(input_tokens) uncached_input_tokens,SUM(cache_read_tokens) cache_hit_tokens,SUM(cache_write_5m_tokens+cache_write_1h_tokens) cache_write_tokens,SUM(output_tokens) total_output_tokens,SUM(reasoning_tokens) total_reasoning_tokens FROM usage_records WHERE created_at>=?{extra} GROUP BY 1,model ORDER BY 1 DESC,total_cost_usd DESC"#),&args)}
 
-fn hourly_stats(conn:&Connection,account:Option<&str>,timezone:&str)->Result<Vec<Value>,String>{let mut args=vec![json!(timezone)];let extra=if let Some(id)=account{args.push(json!(id));"WHERE account_id=?"}else{""};query_json(conn,&format!(r#"WITH RECURSIVE hours(h) AS (VALUES(0) UNION ALL SELECT h+1 FROM hours WHERE h<23), stats AS (SELECT CAST(tz_hour(created_at,?) AS INTEGER) h,SUM(cost_usd) cost,COUNT(*) requests,SUM(input_tokens+cache_read_tokens+cache_write_5m_tokens+cache_write_1h_tokens) inputs,SUM(input_tokens) uncached,SUM(cache_read_tokens) cache_hits,SUM(cache_write_5m_tokens+cache_write_1h_tokens) cache_writes,SUM(output_tokens) outputs,SUM(reasoning_tokens) reasoning FROM usage_records {extra} GROUP BY 1) SELECT printf('%02d:00',hours.h) date,ROUND(COALESCE(cost,0),6) total_cost_usd,COALESCE(requests,0) request_count,COALESCE(inputs,0) total_input_tokens,COALESCE(uncached,0) uncached_input_tokens,COALESCE(cache_hits,0) cache_hit_tokens,COALESCE(cache_writes,0) cache_write_tokens,COALESCE(outputs,0) total_output_tokens,COALESCE(reasoning,0) total_reasoning_tokens FROM hours LEFT JOIN stats ON stats.h=hours.h ORDER BY hours.h DESC"#),&args)}
+fn hourly_stats(conn:&Connection,account:Option<&str>,timezone:&str)->Result<Vec<Value>,String>{let mut args=vec![json!(timezone),json!(period_start(1,timezone))];let filter=if let Some(id)=account{args.push(json!(id));"AND account_id=?"}else{""};query_json(conn,&format!(r#"WITH RECURSIVE hours(h) AS (VALUES(0) UNION ALL SELECT h+1 FROM hours WHERE h<23), stats AS (SELECT CAST(tz_hour(created_at,?) AS INTEGER) h,SUM(cost_usd) cost,SUM(cost_usd*COALESCE((SELECT 60.0/NULLIF(mt.monthly_quota_usd,0) FROM model_quota_tiers mt WHERE mt.model_key=normalize_model(model)),1.0)) equivalent_cost,COUNT(*) requests,SUM(input_tokens+cache_read_tokens+cache_write_5m_tokens+cache_write_1h_tokens) inputs,SUM(input_tokens) uncached,SUM(cache_read_tokens) cache_hits,SUM(cache_write_5m_tokens+cache_write_1h_tokens) cache_writes,SUM(output_tokens) outputs,SUM(reasoning_tokens) reasoning FROM usage_records WHERE created_at>=?{filter} GROUP BY 1) SELECT printf('%02d:00',hours.h) date,ROUND(COALESCE(cost,0),6) total_cost_usd,ROUND(COALESCE(equivalent_cost,0),6) equivalent_cost_usd,COALESCE(requests,0) request_count,COALESCE(inputs,0) total_input_tokens,COALESCE(uncached,0) uncached_input_tokens,COALESCE(cache_hits,0) cache_hit_tokens,COALESCE(cache_writes,0) cache_write_tokens,COALESCE(outputs,0) total_output_tokens,COALESCE(reasoning,0) total_reasoning_tokens FROM hours LEFT JOIN stats ON stats.h=hours.h ORDER BY hours.h DESC"#),&args)}
 
 fn quota_units(conn:&Connection,period:&str,account:Option<&str>,timezone:&str)->Result<Value,String>{let days=period_days(period);let mut args=vec![json!(period_start(days,timezone))];let extra=if let Some(id)=account{args.push(json!(id));" AND ur.account_id=?"}else{""};let models=query_json(conn,&format!(r#"SELECT ur.model,ROUND(SUM((ur.input_tokens+ur.output_tokens+ur.reasoning_tokens+ur.cache_read_tokens)*COALESCE((SELECT q.weight FROM quota_weight_rules q WHERE (q.account_id IS NULL OR q.account_id=ur.account_id) AND (q.plan IS NULL OR q.plan=ur.plan) AND (q.model_pattern='*' OR ur.model LIKE REPLACE(q.model_pattern,'*','%')) AND q.effective_from<=ur.created_at ORDER BY q.account_id IS NOT NULL DESC,q.effective_from DESC LIMIT 1),1))/1000000.0,6) quota_units,SUM(ur.input_tokens+ur.output_tokens+ur.reasoning_tokens+ur.cache_read_tokens) processed_tokens,COUNT(*) request_count FROM usage_records ur WHERE ur.created_at>=?{extra} GROUP BY ur.model ORDER BY quota_units DESC"#),&args)?;let total:f64=models.iter().map(|v|v["quota_units"].as_f64().unwrap_or(0.0)).sum();let requests:i64=models.iter().map(|v|v["request_count"].as_i64().unwrap_or(0)).sum();Ok(json!({"period":period,"total_quota_units":total,"request_count":requests,"models":models}))}
 
@@ -402,6 +403,22 @@ mod tests {
     assert_eq!(rows.len(),1);
     assert_eq!(rows[0]["success"],json!(true));
     assert_eq!(rows[0]["windows"][0]["remaining"],json!(58.0));
+  }
+  #[test]
+  fn daily_and_hourly_stats_include_equivalent_cost() {
+    let directory=tempfile::tempdir().unwrap();let path=directory.path().join("equiv.db");initialize(&path).unwrap();let conn=Connection::open(&path).unwrap();configure_connection(&conn).unwrap();
+    conn.execute("INSERT INTO opencode_accounts(id,name,workspace_id,auth_cookie,created_at,updated_at) VALUES('a','A','Default','keyring',?,?)",params![now(),now()]).unwrap();
+    let created=Utc::now().to_rfc3339_opts(SecondsFormat::Secs,true);
+    let insert="INSERT INTO usage_records(usg_id,account_id,workspace_id,created_at,model,provider,input_tokens,output_tokens,cost_raw,cost_usd,synced_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)";
+    conn.execute(insert,params!["u1","a","Default",created,"DeepSeek V4 Pro","opencode",100,20,1,1.0,created]).unwrap();
+    conn.execute(insert,params!["u2","a","Default",created,"Unknown Model","opencode",100,20,1,2.0,created]).unwrap();
+    let daily=daily_stats(&conn,1,None,"UTC").unwrap();
+    assert_eq!(daily[0]["total_cost_usd"],json!(3.0));
+    assert_eq!(daily[0]["equivalent_cost_usd"],json!(6.0));
+    let hourly=hourly_stats(&conn,None,"UTC").unwrap();
+    assert_eq!(hourly.len(),24);
+    let equivalent:f64=hourly.iter().map(|row|row["equivalent_cost_usd"].as_f64().unwrap_or(0.0)).sum();
+    assert!((equivalent-6.0).abs()<1e-9);
   }
   #[test]
   fn converts_records_with_iana_timezone_and_dst() {

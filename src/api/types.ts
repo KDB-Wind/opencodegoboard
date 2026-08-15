@@ -148,6 +148,7 @@ export interface Overview {
 export interface DailyStat {
   date: string;
   total_cost_usd: number;
+  equivalent_cost_usd: number;
   request_count: number;
   total_input_tokens: number;
   uncached_input_tokens: number;

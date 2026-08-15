@@ -16,45 +16,41 @@ interface DailyChartProps {
   hourly?: boolean;
 }
 
+const roundUsd = (v: number) => Math.round(v * 1_000_000) / 1_000_000;
+
 export function DailyChart({ data, mode, hourly = false }: DailyChartProps) {
   const { t } = useTranslation();
 
   const rawData = [...data].reverse().map((d) => ({
     date: hourly ? d.date : d.date.slice(5),
     fullDate: d.date,
-    cost: Math.round(d.total_cost_usd * 1000000) / 1000000,
+    cost: roundUsd(d.total_cost_usd),
+    equivalent: roundUsd(d.equivalent_cost_usd ?? 0),
     requests: d.request_count,
     tokens: d.total_input_tokens + d.total_output_tokens + d.total_reasoning_tokens,
   }));
-  const maxima = {
-    cost: Math.max(...rawData.map((d) => d.cost), 0),
-    requests: Math.max(...rawData.map((d) => d.requests), 0),
-    tokens: Math.max(...rawData.map((d) => d.tokens), 0),
-  };
-  const chartData = rawData.map((d) => ({
-    ...d,
-    costNormalized: maxima.cost ? d.cost / maxima.cost * 100 : 0,
-    requestsNormalized: maxima.requests ? d.requests / maxima.requests * 100 : 0,
-    tokensNormalized: maxima.tokens ? d.tokens / maxima.tokens * 100 : 0,
-  }));
+
+  const modeLabel =
+    mode === 'compare' ? t('tokenStats.trendEquivalentCompare')
+    : mode === 'cost' ? t('tokenStats.trendCost')
+    : mode === 'tokens' ? t('tokenStats.trendTokens')
+    : t('tokenStats.trendRequests');
 
   const formatValue = (v: number) => {
-    if (mode === 'cost') return '$' + v.toFixed(4);
-    if (mode === 'compare') return `${Math.round(v)}%`;
+    if (mode === 'cost' || mode === 'compare') return '$' + v.toFixed(4);
     return v.toLocaleString();
   };
 
   return (
-    <div role="img" aria-label={t('tokenStats.chartDescription', { mode: t(`tokenStats.${mode}`), count: chartData.length })}>
+    <div role="img" aria-label={t('tokenStats.chartDescription', { mode: modeLabel, count: rawData.length })}>
       {mode === 'compare' && (
         <div className="flex flex-wrap gap-4 text-xs text-muted mb-2" aria-hidden="true">
-          <span>━━ {t('tokenStats.trendCost')}</span>
-          <span>┅┅ {t('tokenStats.trendRequests')}</span>
-          <span>··· {t('tokenStats.trendTokens')}</span>
+          <span>━━ {t('tokenStats.trendActualCost')}</span>
+          <span>┅┅ {t('tokenStats.trendEquivalentCost')}</span>
         </div>
       )}
       <ResponsiveContainer width="100%" height={320} className="select-none">
-      <LineChart accessibilityLayer data={chartData} margin={{ left: 10 }}>
+      <LineChart accessibilityLayer data={rawData} margin={{ left: 10 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.87 0.01 80)" />
         <XAxis
           dataKey="date"
@@ -77,23 +73,20 @@ export function DailyChart({ data, mode, hourly = false }: DailyChartProps) {
           }}
           formatter={(value, name) => {
             const v = Number(value);
-            if (name === 'cost') return ['$' + v.toFixed(4), t('tokenStats.trendTooltipCost')];
+            if (name === 'cost') return ['$' + v.toFixed(4), t('tokenStats.trendActualCost')];
+            if (name === 'equivalent') return ['$' + v.toFixed(4), t('tokenStats.trendEquivalentCost')];
             if (name === 'tokens') return [v.toLocaleString(), t('tokenStats.trendTokens')];
-            if (name === 'costNormalized') return [`${v.toFixed(0)}%`, t('tokenStats.trendCost')];
-            if (name === 'requestsNormalized') return [`${v.toFixed(0)}%`, t('tokenStats.trendRequests')];
-            if (name === 'tokensNormalized') return [`${v.toFixed(0)}%`, t('tokenStats.trendTokens')];
-            return [v, t('tokenStats.trendTooltipRequests')];
+            return [v.toLocaleString(), t('tokenStats.trendTooltipRequests')];
           }}
           labelFormatter={(label) => {
-            const match = chartData.find((d) => d.date === label);
+            const match = rawData.find((d) => d.date === label);
             return match?.fullDate || label;
           }}
         />
         {mode === 'compare' ? (
           <>
-            <Line type="monotone" dataKey="costNormalized" stroke="oklch(0.58 0.20 340)" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="requestsNormalized" stroke="oklch(0.62 0.17 230)" strokeDasharray="8 4" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="tokensNormalized" stroke="oklch(0.65 0.17 145)" strokeDasharray="2 4" strokeWidth={3} dot={false} />
+            <Line type="monotone" dataKey="cost" stroke="oklch(0.58 0.20 340)" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: 'oklch(0.58 0.20 340)' }} />
+            <Line type="monotone" dataKey="equivalent" stroke="oklch(0.62 0.17 230)" strokeDasharray="8 4" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: 'oklch(0.62 0.17 230)' }} />
           </>
         ) : (
           <Line
