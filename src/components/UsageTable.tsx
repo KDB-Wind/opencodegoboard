@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { UsageRecord } from '../api/types';
 import { ModelIcon } from './ModelIcon';
+import { getStoredTimezone } from '../lib/timezone';
 
 interface UsageTableProps {
   records: UsageRecord[];
@@ -70,12 +71,7 @@ export function UsageTable({ records, showAccount }: UsageTableProps) {
   const [hover, setHover] = useState<{ record: UsageRecord; rect: DOMRect } | null>(null);
 
   const formatTime = (iso: string) => {
-    const d = new Date(iso);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mi = String(d.getMinutes()).padStart(2, '0');
-    return `${mm}/${dd} ${hh}:${mi}`;
+    return new Intl.DateTimeFormat(undefined, { timeZone: getStoredTimezone(), month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(iso));
   };
 
   const showBreakdown = (record: UsageRecord) => (e: MouseEvent<HTMLTableCellElement>) => {

@@ -255,6 +255,7 @@ export interface UsageDataHealth {
 }
 
 export interface ServiceConfig {
+  timezone: string;
   refresh: {
     opencode_go: { auto_refresh: boolean; interval_sec: number };
   };

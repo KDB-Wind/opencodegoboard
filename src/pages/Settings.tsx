@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api/client';
@@ -9,6 +9,7 @@ import { About } from './About';
 import type { OpenCodeAccount } from '../api/types';
 import { loadQuotaNotificationSettings, saveQuotaNotificationSettings, type NotificationThreshold } from '../lib/quotaNotifications';
 import { desktop, isTauri } from '../lib/desktop';
+import { DEFAULT_TIMEZONE, storeTimezone, supportedTimezones } from '../lib/timezone';
 
 function BackendStatus() {
   const { t } = useTranslation();
@@ -92,14 +93,33 @@ export function Settings() {
   const [backfillUntil, setBackfillUntil] = useState('');
   const [quotaNotifications, setQuotaNotifications] = useState(loadQuotaNotificationSettings);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE);
+  const timezoneOptions = useMemo(supportedTimezones, []);
   const syncConfigLoadedRef = useRef(false);
   useEffect(() => {
     if (config?.usage_sync && !syncConfigLoadedRef.current) {
       syncConfigLoadedRef.current = true;
       setAutoSync(config.usage_sync.auto_sync ?? true);
       setSyncInterval(config.usage_sync.interval_sec ?? 300);
+      const configuredTimezone = config.timezone || DEFAULT_TIMEZONE;
+      setTimezone(configuredTimezone);
+      storeTimezone(configuredTimezone);
     }
   }, [config]);
+
+  const handleTimezoneChange = async (value: string) => {
+    const previous = timezone;
+    setTimezone(value);
+    try {
+      await api.updateConfig({ timezone: value });
+      storeTimezone(value);
+      toast(t('settings.toastTimezoneSaved'), 'success');
+      refetch();
+    } catch (error) {
+      setTimezone(previous);
+      toast(t('settings.toastTimezoneFailed', { msg: (error as Error).message }), 'error');
+    }
+  };
   const [trayMode, setTrayMode] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<OpenCodeAccount | null>(null);
   const [editingAccount, setEditingAccount] = useState<OpenCodeAccount | null>(null);
@@ -382,6 +402,20 @@ export function Settings() {
               ))}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* -- 时区 -- */}
+      <div className="border border-base-200 rounded-xl p-4">
+        <h2 className="text-sm font-bold text-base-content/70 mb-4">{t('settings.timezone')}</h2>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="text-sm text-base-content/70">{t('settings.timezone')}</div>
+            <div className="text-xs text-muted mt-0.5">{t('settings.timezoneDesc')}</div>
+          </div>
+          <select className="select select-bordered select-sm w-64" value={timezone} onChange={(event) => void handleTimezoneChange(event.target.value)}>
+            {timezoneOptions.map((value) => <option key={value} value={value}>{value}</option>)}
+          </select>
         </div>
       </div>
 

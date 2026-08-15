@@ -1,16 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api/client';
 import { ModelIcon } from '../components/ModelIcon';
 import type { OpenCodeAccount } from '../api/types';
-
-const toDateStr = (d: Date) => {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
+import { dateKeyInTimezone, DEFAULT_TIMEZONE, storeTimezone } from '../lib/timezone';
 
 const fmtTokens = (v: number) => {
   if (v >= 1_000_000) return (v / 1_000_000).toFixed(2) + 'M';
@@ -20,10 +14,12 @@ const fmtTokens = (v: number) => {
 
 export function DailyTrends() {
   const { t, i18n } = useTranslation();
-  const [selectedDate, setSelectedDate] = useState(() => toDateStr(new Date()));
+  const [selectedDate, setSelectedDate] = useState(() => dateKeyInTimezone(new Date(), DEFAULT_TIMEZONE));
   const [accountId, setAccountId] = useState('');
 
   const { data: accounts } = usePolling(() => api.listOpenCodeAccounts(), 120000);
+  const { data: config } = usePolling(() => api.getConfig(), 120000);
+  const timezone = config?.timezone || DEFAULT_TIMEZONE;
 
   const aid = accountId || undefined;
 
@@ -34,12 +30,12 @@ export function DailyTrends() {
     [aid],
   );
 
-  const today = useMemo(() => toDateStr(new Date()), []);
+  const today = useMemo(() => dateKeyInTimezone(new Date(), timezone), [timezone]);
   const yesterday = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() - 1);
-    return toDateStr(d);
-  }, []);
+    const d = new Date(Date.now() - 86_400_000);
+    return dateKeyInTimezone(d, timezone);
+  }, [timezone]);
+  useEffect(() => { storeTimezone(timezone); setSelectedDate(today); }, [timezone, today]);
 
   const dayStats = useMemo(() => {
     const rows = (dayModels?.stats ?? []).filter((r) => r.date === selectedDate);
@@ -59,9 +55,9 @@ export function DailyTrends() {
 
   const fmtDate = (s: string) => {
     const [y, m, d] = s.split('-').map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString(
+    return new Date(Date.UTC(y, m - 1, d, 12)).toLocaleDateString(
       i18n.language === 'zh' ? 'zh-CN' : 'en-US',
-      { year: 'numeric', month: 'short', day: 'numeric' },
+      { year: 'numeric', month: 'short', day: 'numeric', timeZone: timezone },
     );
   };
 

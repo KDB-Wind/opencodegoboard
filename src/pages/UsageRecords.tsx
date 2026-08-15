@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { Loading } from '../components/Loading';
 import { UsageTable } from '../components/UsageTable';
 import type { OpenCodeAccount, UsageRecord, UsageSession } from '../api/types';
+import { getStoredTimezone } from '../lib/timezone';
 
 export function UsageRecords() {
   const { t } = useTranslation();
@@ -150,7 +151,7 @@ export function UsageRecords() {
                   <td className="text-right tabular-nums">{session.request_count.toLocaleString()}</td>
                   <td className="text-right tabular-nums">{(session.total_input_tokens + session.total_output_tokens + session.total_reasoning_tokens).toLocaleString()}</td>
                   <td className="text-right tabular-nums">${session.total_cost_usd.toFixed(4)}</td>
-                  <td>{new Date(session.last_at).toLocaleString()}</td>
+                  <td>{new Date(session.last_at).toLocaleString(undefined, { timeZone: getStoredTimezone() })}</td>
                 </tr>
               ))}
               {!sessions.length && !loading && <tr><td colSpan={7} className="py-10 text-center text-base-content/60">{t('usageRecords.noSessions')}</td></tr>}

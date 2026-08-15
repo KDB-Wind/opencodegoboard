@@ -10,6 +10,7 @@ import { useToast } from '../components/Toast';
 import { getStoredTimeRange, storeTimeRange, TimeRangeTabs, type TimeRange } from '../components/TimeRangeTabs';
 import { notifyQuotaAlert } from '../lib/quotaNotifications';
 import type { QuotaWindow } from '../api/types';
+import { DEFAULT_TIMEZONE } from '../lib/timezone';
 
 function fmt(v: number) {
   if (v >= 1_000_000_000_000) return (v / 1_000_000_000_000).toFixed(2) + 'T';
@@ -39,7 +40,7 @@ const barLabelKeys: Record<string, string> = {
   Monthly: 'dashboard.30d',
 };
 
-function QuotaBar({ windows }: { windows: QuotaWindow[] }) {
+function QuotaBar({ windows, timezone }: { windows: QuotaWindow[]; timezone: string }) {
   const { t, i18n } = useTranslation();
   return (
     <div className="space-y-3">
@@ -68,7 +69,7 @@ function QuotaBar({ windows }: { windows: QuotaWindow[] }) {
             )}
             {w.label !== '5h Rolling' && w.reset_at && (
               <div className="text-xs text-subtle mt-0.5">
-                {t('dashboard.resetTime', { date: new Date(w.reset_at).toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'en-US') })}
+                {t('dashboard.resetTime', { date: new Date(w.reset_at).toLocaleDateString(i18n.language === 'zh' ? 'zh-CN' : 'en-US', { timeZone: timezone }) })}
               </div>
             )}
           </div>
@@ -163,6 +164,7 @@ export function Dashboard() {
     storeTimeRange(topPeriod);
   }, [topPeriod]);
   const { data, loading, refetch: refetchDashboard } = usePolling((signal) => api.getDashboard('30d', signal), 30000);
+  const timezone = data?.timezone || DEFAULT_TIMEZONE;
 
   const { data: todayData, refetch: refetchToday } = usePolling(
     (signal) => api.getModelTokenStats(1, undefined, 'today', signal),
@@ -250,7 +252,7 @@ export function Dashboard() {
         value: todayData ? fmt(today) : '-',
         sub: `${t('dashboard.todayTokenDesc')} · ${new Date().toLocaleDateString(
           i18n.language === 'zh' ? 'zh-CN' : 'en-US',
-          { year: 'numeric', month: '2-digit', day: '2-digit' },
+          { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: timezone },
         )}`,
         breakdown: null,
         size: 'md',
@@ -270,7 +272,7 @@ export function Dashboard() {
         size: 'md',
       },
     ];
-  }, [overview, tokens, todayTokens, data?.quota_units?.total_quota_units, t, i18n.language]);
+  }, [overview, tokens, todayTokens, data?.quota_units?.total_quota_units, t, i18n.language, timezone]);
 
   if (loading && !data) {
     return (
@@ -391,7 +393,7 @@ export function Dashboard() {
               <div key={`${event.account_id}:${event.window_label}:${event.to}`} className="flex items-center gap-3 text-sm">
                 <span className="badge badge-outline badge-sm">{t(`dashboard.reconcile_${event.event_type}`)}</span>
                 <span className="font-medium">{event.account_name} · {event.window_label}</span>
-                <span className="text-muted ml-auto">{new Date(event.to).toLocaleString()}</span>
+                <span className="text-muted ml-auto">{new Date(event.to).toLocaleString(undefined, { timeZone: timezone })}</span>
               </div>
             ))}
           </div>
@@ -408,7 +410,7 @@ export function Dashboard() {
               {quota.map((q) => (
                 <div key={q.account_id}>
                   <div className="text-sm font-semibold text-base-content/70 mb-2">{q.name}</div>
-                  <QuotaBar windows={q.windows} />
+                  <QuotaBar windows={q.windows} timezone={timezone} />
                 </div>
               ))}
             </div>

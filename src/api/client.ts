@@ -92,6 +92,7 @@ export const api = {
     quota_units: QuotaUnitStats;
     recommendations: UsageRecommendation;
     period: string;
+    timezone: string;
   }>(`/dashboard?period=${period}`, signal),
   // Config
   getConfig: () => get<ServiceConfig>('/config'),
