@@ -87,4 +87,5 @@
 - [x] 开关由 Rust `service_settings.payload.feature_flags` 持久化；极简/完整预设只是动作，持久化的只有组开关。
 - [x] 被关闭功能隐藏路由/区块，后端跳过重计算并拒绝专有接口；基础同步与配额快照采集不受影响。
 - [x] 双语 i18n、Rust/Vitest 测试、`pnpm build` 与 `pnpm a11y:check` 通过。
+- [x] 等效总费用：按模型月额度档位把 15 刀档费用 ×4 折算到 60 刀口径，极简模式常驻；档位表可在设置中维护，默认来源 OpenCode 文档 2026-08-15。
 - 最终决策与实现位置见 `docs/SIMPLIFY_MODE_HANDOFF.md`。

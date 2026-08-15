@@ -28,7 +28,7 @@ OpenCodeGoBoard is a local-first quota and usage decision tool for OpenCode Go. 
 
 ### 1. Dashboard
 
-The Dashboard is the daily decision view. It shows account availability, the earliest quota bottleneck, current quota windows, reset times, recent token usage, data health, reconciliation events, and account/model recommendations.
+The Dashboard is the daily decision view. It shows account availability, the earliest quota bottleneck, current quota windows, reset times, recent token usage, actual cost, **equivalent cost** ($15-tier models ×4 normalized to the $60 tier), data health, reconciliation events, and account/model recommendations.
 
 Use **Sync Now** when you need fresh data immediately. In Minimal mode it performs incremental sync only; with Advanced Sync enabled it also backfills 90 days of history. Forecasts need multiple quota snapshots; “insufficient data” is expected for a newly added account.
 
@@ -59,6 +59,7 @@ Settings contains the operational controls:
 - **Appearance and readability:** select theme, density, or high contrast.
 - **System behavior:** configure tray behavior. Quota notifications appear with the Quota Intelligence & Alerts group.
 - **Accounts:** add, enable/disable, test, edit/reauthorize, sync, backfill, or delete an account. Deleting an account also deletes its related local history; use Edit when only the cookie changed.
+- **Model Quota & Pricing:** maintain each model's monthly quota tier ($15 / $60) used by equivalent cost; defaults come from the OpenCode docs dated 2026-08-15 and can be overridden or extended.
 - **Auto sync:** choose whether synchronization runs in the background. The interval appears with Advanced Sync.
 - **History backfill:** shown with Advanced Sync; select recent N days, a cutoff date, or all history. Backfill stops at the selected target or the end of available history.
 - **Data management:** shown with Data & Diagnostic Tools; export CSV, create a full SQLite backup, restore a validated backup, or download a redacted diagnostic report.

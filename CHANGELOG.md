@@ -10,6 +10,8 @@
   Existing users keep all features with a one-time prompt; new users can choose Minimal (default) or Full during onboarding.
 - 被关闭的功能会隐藏路由/区块，后端跳过对应计算并拒绝专有接口；基础同步与额度快照采集不受影响，历史数据不删除。
   Disabled features hide routes/blocks, skip backend computation, and reject feature-specific endpoints; base sync and quota snapshot collection continue, and no data is deleted.
+- 新增等效总费用：15 刀月额度档模型 ×4 折算到 60 刀口径，极简模式默认显示；模型额度档位可在设置中维护，默认来源 OpenCode 文档 2026-08-15。
+  Added equivalent cost: $15-tier models are ×4 normalized to the $60 tier and shown by default in Minimal mode; model quota tiers are user-maintainable in Settings, seeded from OpenCode docs dated 2026-08-15.
 
 ## v1.2.0 (fork)
 
