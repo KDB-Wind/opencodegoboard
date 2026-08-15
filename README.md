@@ -44,7 +44,7 @@ Token Analytics compares input, output, reasoning, cache reads, cost, request co
 
 Usage Records provides two views:
 
-- **Sessions** groups requests by session and project. A session can be linked to a local project name, directory, and title.
+- **Sessions** groups requests by session and project. Project name, directory, and title come directly from OpenCode during sync; no manual linking is required.
 - **Records** shows individual requests, models, token breakdowns, costs, accounts, and timestamps.
 
 Account filters and pagination apply to both views. Project cards summarize cost, cache rate, and model composition.
