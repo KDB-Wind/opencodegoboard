@@ -2,24 +2,24 @@
 
 **English** · [简体中文](README_zh.md)
 
-OpenCodeGoBoard is a local-first quota and usage decision tool for OpenCode Go. It combines official quota windows with locally synchronized usage to explain which limit is the bottleneck, whether quota can last until reset, which account or model is safer to use, and whether local history is complete.
+OpenCodeGoBoard is a small, local-first Windows companion for OpenCode Go. It brings official quota windows and locally synchronized usage into one desktop view: remaining quota and reset times, total and daily Token use, actual and **equivalent cost**, per-model analytics, and raw usage records.
 
 ## Highlights
 
-- Multi-account quota, bottleneck windows, endurance forecasts, and safe budgets
-- Usage sync, session/project attribution, token/cost/cache analytics
-- Official-versus-local reconciliation and automatic model-weight calibration
-- Optional threshold notifications, redacted diagnostics, CSV export, and validated backup/restore
-- Minimal by default; enable stats, records, quota intelligence, data tools, and advanced sync in **Settings → Feature Mode**
-- English and Chinese interfaces with IANA time-zone analytics and daylight-saving support
-- Tauri + Rust + SQLite, with no Electron, Hono, Bun backend, or localhost HTTP service
-- Auth Cookies stored in the Windows credential vault rather than the application database
+- Small footprint: Tauri + Rust + SQLite; no Electron, Hono, Bun backend, or localhost HTTP service. Measured process-tree private memory is about 159 MB on a 16 GB machine.
+- **Equivalent cost:** $15-tier models are ×4 normalized to the $60 tier automatically; the tier table is user-maintainable in Settings.
+- Multi-account quota bars for the 5h / 7d / 30d official windows, the tightest quota window, and reset times.
+- Token analytics by Today / 7 days / 30 days / All, plus a **custom start/end date range** (for example, exactly yesterday).
+- Per-model token breakdowns, cache hit rate, request counts, cost, and an actual-vs-equivalent cost trend.
+- Minimal by default; enable stats, records, quota desktop alerts, and advanced sync in **Settings → Feature Mode**.
+- English and Chinese interfaces with IANA time-zone analytics and daylight-saving support.
+- Auth Cookies stored in the Windows credential vault rather than the application database.
 
 ## Quick start
 
-1. Fresh installs start in **Minimal mode**. Open **Settings → Feature Mode** first if you want more pages and advanced features, or choose the Full preset.
+1. Fresh installs start in **Minimal mode**. Open **Settings → Feature Mode** if you want more pages, or choose the Full preset.
 2. Open **Settings → OpenCode Accounts → Add Account**.
-3. Sign in through the system browser, copy the `auth` cookie from `https://opencode.ai`, and paste it into **Auth Cookie**.
+3. Sign in through the built-in browser login, or copy the `auth` cookie from `https://opencode.ai` via browser developer tools and paste it into **Auth Cookie**.
 4. Select **Test** to verify the account, then **Sync** to fetch recent usage.
 5. Enable **Advanced Sync** before using **Backfill** when you need older records. Choose recent days, an end date, or all history before starting it.
 6. If a cookie expires, select **Edit** or **Reauthorize**. Updating an existing account preserves its usage history.
@@ -28,46 +28,37 @@ OpenCodeGoBoard is a local-first quota and usage decision tool for OpenCode Go. 
 
 ### 1. Dashboard
 
-The Dashboard is the daily decision view. It shows account availability, the earliest quota bottleneck, current quota windows, reset times, recent token usage, actual cost, **equivalent cost** ($15-tier models ×4 normalized to the $60 tier), data health, reconciliation events, and account/model recommendations.
+The Dashboard shows six core cards: account availability, the tightest quota window, total Token consumption, today's Token usage, actual cost, and **equivalent cost** ($15-tier models ×4 normalized to the $60 tier). Below them are per-account quota bars with reset times, recent usage, and a data-health warning when something is incomplete.
 
-Use **Sync Now** when you need fresh data immediately. In Minimal mode it performs incremental sync only; with Advanced Sync enabled it also backfills 90 days of history. Forecasts need multiple quota snapshots; “insufficient data” is expected for a newly added account.
+Use **Sync Now** when you need fresh data immediately. In Minimal mode it performs incremental sync only; with Advanced Sync enabled it also backfills 90 days of history.
 
 ### 2. Token Analytics
 
 (Enable the **Usage Stats** group in Feature Mode first.)
 
-Token Analytics compares input, output, reasoning, cache reads, cost, request count, models, daily trends, and hourly distribution. Use the period and account selectors to narrow the analysis. Day boundaries and hourly buckets follow the time zone selected in Settings.
+Token Analytics summarizes requests, total/input/output/reasoning tokens, cache hits, cost, and equivalent cost. Use the account and model filters, the Today / 7 days / 30 days / All tabs, or the **Custom** tab with a start and end date. The trend chart can show cost, tokens, requests, or actual-vs-equivalent cost; Today shows the hourly distribution.
 
 ### 3. Usage Records
 
 (Enable the **Usage Records** group in Feature Mode first.)
 
-Usage Records provides two views:
-
-- **Sessions** groups requests by session and project. Project name, directory, and title come directly from OpenCode during sync; no manual linking is required.
-- **Records** shows individual requests, models, token breakdowns, costs, accounts, and timestamps.
-
-Account filters and pagination apply to both views. Project cards summarize cost, cache rate, and model composition.
+Usage Records shows the raw request list: model, input/output/reasoning tokens, cache hit/write, cost, account, session, project and timestamp. Filter by account and page through the list.
 
 ### 4. Settings
 
-Settings contains the operational controls:
-
-- **Feature Mode:** choose the Minimal or Full preset, or toggle the five feature groups individually. Minimal mode shows only the core controls below; advanced sections appear with their matching switch.
-- **Language:** choose English, Chinese, or follow the operating system.
-- **Time zone:** defaults to `Asia/Shanghai`; choose any available IANA zone such as `America/New_York`. It changes Today, daily/hourly analytics, period boundaries, and displayed timestamps.
-- **Appearance and readability:** select theme, density, or high contrast.
-- **System behavior:** configure tray behavior. Quota notifications appear with the Quota Intelligence & Alerts group.
+- **Feature Mode:** choose the Minimal or Full preset, or toggle the four feature groups individually.
+- **Language:** English, Chinese, or follow the operating system.
+- **Time zone:** defaults to `Asia/Shanghai`; choose any available IANA zone such as `America/New_York`. It changes Today, hourly analytics, custom date ranges, and displayed timestamps.
+- **Appearance and readability:** theme and reading-density controls.
+- **System behavior:** tray mode. Desktop quota alerts appear with the Quota Desktop Alerts group and are off by default.
 - **Accounts:** add, enable/disable, test, edit/reauthorize, sync, backfill, or delete an account. Deleting an account also deletes its related local history; use Edit when only the cookie changed.
 - **Model Quota & Pricing:** maintain each model's monthly quota tier ($15 / $60) used by equivalent cost; defaults come from the OpenCode docs dated 2026-08-15 and can be overridden or extended.
 - **Auto sync:** choose whether synchronization runs in the background. The interval appears with Advanced Sync.
-- **History backfill:** shown with Advanced Sync; select recent N days, a cutoff date, or all history. Backfill stops at the selected target or the end of available history.
-- **Data management:** shown with Data & Diagnostic Tools; export CSV, create a full SQLite backup, restore a validated backup, or download a redacted diagnostic report.
-- **Backend and updates:** shown with Data & Diagnostic Tools; inspect Tauri IPC health, restart the application, and check the configured signed-update source.
+- **History backfill:** shown with Advanced Sync; select recent N days, a cutoff date, or all history.
 
 ## Privacy and data
 
-Usage and quota data stay in a local SQLite database. Account credentials are stored in Windows Credential Manager. Diagnostic exports omit credentials and raw account secrets. Back up the database before deleting accounts or restoring another database.
+Usage and quota data stay in a local SQLite database. Account credentials are stored in Windows Credential Manager.
 
 ## Development
 
