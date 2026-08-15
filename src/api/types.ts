@@ -101,6 +101,20 @@ export interface QuotaUnitStats {
   models: Array<{ model: string; quota_units: number; processed_tokens: number; request_count: number }>;
 }
 
+export interface ModelQuotaTier {
+  model_key: string;
+  display_name: string;
+  monthly_quota_usd: number;
+  multiplier: number;
+  input_price_usd: number | null;
+  output_price_usd: number | null;
+  cache_read_price_usd: number | null;
+  cache_write_price_usd: number | null;
+  source: string;
+  source_url: string | null;
+  updated_at: string;
+}
+
 export interface UsageRecommendation {
   account: {
     account_id: string; name: string; bottleneck_remaining: number;

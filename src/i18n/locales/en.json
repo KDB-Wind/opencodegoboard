@@ -118,7 +118,9 @@
     "reason_best_safe_headroom": "best safe headroom",
     "reason_least_risk_among_critical": "all accounts are at risk; this is the least risky",
     "notificationTitle": "OpenCode Go quota alert",
-    "syncOnly": "Sync Now"
+    "syncOnly": "Sync Now",
+    "equivalentCost": "Equivalent Cost",
+    "equivalentCostDesc": "Normalized to the $60 tier by model quota · last 30 days"
   },
   "tokenStats": {
     "chartDescription": "{{mode}} trend chart with {{count}} data points",
@@ -151,7 +153,8 @@
     "trendCompare": "Normalized comparison",
     "trendTooltipCost": "Cost",
     "trendTooltipRequests": "Requests",
-    "reasoning": "Reasoning"
+    "reasoning": "Reasoning",
+    "equivalentCost": "Equivalent Cost"
   },
   "dailyTrends": {
     "title": "Daily Usage",
@@ -394,5 +397,27 @@
     "desc": "This upgrade does not change your interface. You can switch to minimal mode anytime in Settings → Feature Mode.",
     "keepFull": "Keep Full",
     "tryMinimal": "Try Minimal"
+  },
+  "modelQuota": {
+    "title": "Model Quota & Pricing",
+    "desc": "Normalizes $15-tier model cost to the $60 equivalent ($15 tier ×4). Default tiers come from the OpenCode official docs dated 2026-08-15 (https://opencode.ai/docs/zh-cn/go/) and may change; please verify.",
+    "priceNote": "Actual cost comes from the OpenCode billing cost field. Unit prices here are for future manual maintenance and are not used in current cost calculations.",
+    "addModel": "Add Model",
+    "monthlyQuota": "Monthly Quota (USD)",
+    "multiplier": "Multiplier",
+    "inputPrice": "Input Price",
+    "outputPrice": "Output Price",
+    "cacheReadPrice": "Cache Read",
+    "cacheWritePrice": "Cache Write",
+    "source": "Source",
+    "sourceOfficial": "OpenCode docs 2026-08-15",
+    "sourceManual": "Manual",
+    "addDialog": "Add Model Quota",
+    "editDialog": "Edit Model Quota",
+    "saved": "Model quota saved",
+    "saveFailed": "Save failed: {{msg}}",
+    "deleted": "Model quota deleted",
+    "deleteFailed": "Delete failed: {{msg}}",
+    "confirmDelete": "Delete the quota tier for {{name}}?"
   }
 }

@@ -6,6 +6,7 @@ use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 mod backend;
 mod features;
+mod model_quota;
 mod quota;
 mod usage;
 mod secrets;

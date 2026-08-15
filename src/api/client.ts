@@ -17,6 +17,7 @@ import type {
   UsageDataHealth,
   UsageSession,
   ProjectUsageStat,
+  ModelQuotaTier,
 } from './types';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -86,6 +87,7 @@ export const api = {
     quota: QuotaAccount[];
     recent_usage: { records: UsageRecord[]; total: number };
     model_tokens: ModelTokenStat[];
+    equivalent_cost_usd: number;
     data_health: UsageDataHealth[];
     quota_intelligence: QuotaIntelligence[];
     quota_reconciliation: QuotaReconciliationEvent[];
@@ -134,6 +136,17 @@ export const api = {
   calibrateQuotaWeights: (accountId?: string) => post<{ created: QuotaWeightRule[] }>(
     `/quota/weights/calibrate${accountId ? `?account_id=${encodeURIComponent(accountId)}` : ''}`,
   ),
+  listModelQuotas: () => get<{ models: ModelQuotaTier[] }>('/model-quotas'),
+  upsertModelQuota: (data: {
+    display_name: string;
+    monthly_quota_usd: number;
+    input_price_usd?: number | null;
+    output_price_usd?: number | null;
+    cache_read_price_usd?: number | null;
+    cache_write_price_usd?: number | null;
+  }) => post<ModelQuotaTier>('/model-quotas', data),
+  deleteModelQuota: (modelKey: string) =>
+    del<{ ok: boolean }>(`/model-quotas/${encodeURIComponent(modelKey)}`),
   getQuotaUnits: (period = '30d', accountId?: string, signal?: AbortSignal) => get<QuotaUnitStats>(
     `/quota/units?period=${encodeURIComponent(period)}${accountId ? `&account_id=${encodeURIComponent(accountId)}` : ''}`,
     signal,
@@ -206,7 +219,7 @@ export const api = {
     let path = `/analytics/opencode/model-tokens?days=${days}`;
     if (period) path += `&period=${encodeURIComponent(period)}`;
     if (accountId) path += `&account_id=${encodeURIComponent(accountId)}`;
-    return get<{ days: number; stats: ModelTokenStat[] }>(path, signal);
+    return get<{ days: number; stats: ModelTokenStat[]; equivalent_cost_usd: number }>(path, signal);
   },
 
   // Config

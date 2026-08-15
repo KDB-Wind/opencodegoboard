@@ -283,6 +283,13 @@ export function Dashboard() {
         breakdown: null,
         size: 'md',
       },
+      {
+        label: t('dashboard.equivalentCost'),
+        value: data ? `$${(data.equivalent_cost_usd ?? 0).toFixed(4)}` : '-',
+        sub: t('dashboard.equivalentCostDesc'),
+        breakdown: null,
+        size: 'md',
+      },
     ];
     if (flags.quota_intelligence) {
       cards.push({
@@ -294,7 +301,7 @@ export function Dashboard() {
       });
     }
     return cards;
-  }, [overview, tokens, todayTokens, quotaUnitsData?.total_quota_units, flags.quota_intelligence, t, i18n.language, timezone]);
+  }, [overview, tokens, todayTokens, quotaUnitsData?.total_quota_units, data?.equivalent_cost_usd, flags.quota_intelligence, t, i18n.language, timezone]);
 
   if (loading && !data) {
     return (

@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::features::{self, ADVANCED_SYNC, DATA_TOOLS, QUOTA_INTELLIGENCE, TOKEN_STATS, USAGE_RECORDS};
 use crate::quota::{self, QuotaAccount};
 
-const SCHEMA_VERSION: i64 = 8;
+const SCHEMA_VERSION: i64 = 9;
 
 #[derive(Clone)]
 pub struct BackendState {
@@ -110,6 +110,8 @@ pub fn initialize(path: &Path) -> Result<(), String> {
       CREATE INDEX IF NOT EXISTS idx_quota_weight_effective ON quota_weight_rules(account_id,plan,effective_from DESC);
       INSERT OR IGNORE INTO quota_weight_rules(id,model_pattern,weight,effective_from,source,created_at) VALUES('default','*',1,'1970-01-01T00:00:00Z','default','1970-01-01T00:00:00Z');
     "#).map_err(|e| e.to_string())?;
+    conn.execute_batch(crate::model_quota::CREATE_TABLE_SQL).map_err(|e| e.to_string())?;
+    if installed < 9 { crate::model_quota::seed_defaults(&conn).map_err(|e| e.to_string())?; }
     conn.pragma_update(None, "user_version", SCHEMA_VERSION).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -310,7 +312,7 @@ async fn route(state:&BackendState, request:&ApiRequest)->Result<Value,String>{
       ("GET","/usage/all")=>{require_feature(state, USAGE_RECORDS)?;list_usage(&conn,qp("account_id").as_deref(),qp("offset").and_then(|v|v.parse().ok()).unwrap_or(0),qp("limit").and_then(|v|v.parse().ok()).unwrap_or(50))},
       ("GET","/health/data")=>Ok(json!({"accounts":health(&conn)?})),
       ("GET","/analytics/opencode/daily")=>{require_feature(state, TOKEN_STATS)?;let days=qp("days").and_then(|v|v.parse().ok()).unwrap_or(30);Ok(json!({"days":days,"timezone":timezone,"stats":daily_stats(&conn,days,qp("account_id").as_deref(),&timezone)?}))},
-      ("GET","/analytics/opencode/model-tokens")=>{let days=qp("period").map(|p|period_days(&p)).or_else(||qp("days").and_then(|v|v.parse().ok())).unwrap_or(30);Ok(json!({"days":days,"timezone":timezone,"stats":model_stats(&conn,days,qp("account_id").as_deref(),&timezone)?}))},
+      ("GET","/analytics/opencode/model-tokens")=>{let days=qp("period").map(|p|period_days(&p)).or_else(||qp("days").and_then(|v|v.parse().ok())).unwrap_or(30);let stats=model_stats(&conn,days,qp("account_id").as_deref(),&timezone)?;let equivalent_cost=crate::model_quota::equivalent_cost(&conn,&stats)?;Ok(json!({"days":days,"timezone":timezone,"stats":stats,"equivalent_cost_usd":equivalent_cost}))},
       ("GET","/analytics/opencode/daily/models")=>{require_feature(state, TOKEN_STATS)?;let days=qp("days").and_then(|v|v.parse().ok()).unwrap_or(30);Ok(json!({"days":days,"timezone":timezone,"stats":daily_model_stats(&conn,days,qp("account_id").as_deref(),&timezone)?}))},
       ("GET","/analytics/opencode/hourly")=>{require_feature(state, TOKEN_STATS)?;Ok(json!({"hours":24,"timezone":timezone,"stats":hourly_stats(&conn,qp("account_id").as_deref(),&timezone)?}))},
       ("GET","/analytics/opencode/projects")=>{require_feature(state, USAGE_RECORDS)?;Ok(json!({"projects":project_stats(&conn,qp("account_id").as_deref())?}))},
@@ -323,7 +325,9 @@ async fn route(state:&BackendState, request:&ApiRequest)->Result<Value,String>{
       ("GET","/quota/units")=>{require_feature(state, QUOTA_INTELLIGENCE)?;quota_units(&conn,qp("period").as_deref().unwrap_or("30d"),qp("account_id").as_deref(),&timezone)},
       ("GET","/recommendations")=>{require_feature(state, QUOTA_INTELLIGENCE)?;let intel=quota_intelligence(&conn,None)?;recommendations(&conn,&intel)},
       ("POST","/quota/weights/calibrate")=>{require_feature(state, QUOTA_INTELLIGENCE)?;Ok(json!({"created":auto_calibrate(&conn,qp("account_id").as_deref())?}))},
-      ("GET","/dashboard")=>{let period=qp("period").unwrap_or_else(||"30d".into());ensure_quota_refresh(state,&conn)?;let quota=cached_quota(&conn)?;let days=period_days(&period);let recent=list_usage(&conn,None,0,10)?;let model=model_stats(&conn,days,None,&timezone)?;let smart=feature_enabled(state,QUOTA_INTELLIGENCE)?;let intel=if smart{quota_intelligence(&conn,None)?}else{Vec::new()};let reconciliation_events=if smart{reconciliation(&conn,None)?.into_iter().take(50).collect::<Vec<_>>()}else{Vec::new()};let recommendations=if smart{recommendations(&conn,&intel)?}else{Value::Null};Ok(json!({"overview":{"opencode":aggregate_quota(&quota)},"quota":quota,"recent_usage":{"records":recent["records"],"total":recent["total"]},"model_tokens":model,"data_health":health(&conn)?,"quota_intelligence":intel,"quota_reconciliation":reconciliation_events,"quota_units":Value::Null,"recommendations":recommendations,"period":period,"timezone":timezone}))},
+      ("GET","/model-quotas")=>Ok(json!({"models":crate::model_quota::list(&conn)?})),
+      ("POST","/model-quotas")=>{let body=request.body.as_ref().ok_or("request body required")?;crate::model_quota::upsert(&conn,body)},
+      ("GET","/dashboard")=>{let period=qp("period").unwrap_or_else(||"30d".into());ensure_quota_refresh(state,&conn)?;let quota=cached_quota(&conn)?;let days=period_days(&period);let recent=list_usage(&conn,None,0,10)?;let model=model_stats(&conn,days,None,&timezone)?;let equivalent_cost=crate::model_quota::equivalent_cost(&conn,&model)?;let smart=feature_enabled(state,QUOTA_INTELLIGENCE)?;let intel=if smart{quota_intelligence(&conn,None)?}else{Vec::new()};let reconciliation_events=if smart{reconciliation(&conn,None)?.into_iter().take(50).collect::<Vec<_>>()}else{Vec::new()};let recommendations=if smart{recommendations(&conn,&intel)?}else{Value::Null};Ok(json!({"overview":{"opencode":aggregate_quota(&quota)},"quota":quota,"recent_usage":{"records":recent["records"],"total":recent["total"]},"model_tokens":model,"equivalent_cost_usd":equivalent_cost,"data_health":health(&conn)?,"quota_intelligence":intel,"quota_reconciliation":reconciliation_events,"quota_units":Value::Null,"recommendations":recommendations,"period":period,"timezone":timezone}))},
       ("GET","/analytics/overview")=>{ensure_quota_refresh(state,&conn)?;Ok(json!({"opencode":aggregate_quota(&cached_quota(&conn)?)}))},
       ("GET","/data/backup")=>{require_feature(state, DATA_TOOLS)?;conn.execute_batch("PRAGMA wal_checkpoint(FULL)").map_err(|e|e.to_string())?;drop(conn);let bytes=fs::read(&state.db_path).map_err(|e|e.to_string())?;Ok(json!({"base64":BASE64.encode(bytes),"mime":"application/x-sqlite3","filename":"opencodegoboard-backup.db"}))},
       ("GET","/data/diagnostics")=>{require_feature(state, DATA_TOOLS)?;let report=json!({"format":"opencodegoboard-diagnostics","format_version":1,"generated_at":now(),"runtime":{"platform":std::env::consts::OS,"arch":std::env::consts::ARCH,"transport":"tauri-ipc"},"database":{"schema_version":SCHEMA_VERSION,"counts":{"accounts":one(&conn,"SELECT COUNT(*) count FROM opencode_accounts",&[])?["count"],"usage_records":one(&conn,"SELECT COUNT(*) count FROM usage_records",&[])?["count"],"quota_snapshots":one(&conn,"SELECT COUNT(*) count FROM quota_snapshots",&[])?["count"]}},"data_health":health(&conn)?});let bytes=serde_json::to_vec_pretty(&report).map_err(|e|e.to_string())?;Ok(json!({"base64":BASE64.encode(bytes),"mime":"application/json","filename":"opencodegoboard-diagnostics.json"}))},
@@ -336,6 +340,7 @@ fn merge_json(target:&mut Value,patch:&Value){if let(Value::Object(to),Value::Ob
 
 fn dynamic_route(state:&BackendState,conn:&Connection,request:&ApiRequest,path:&str,url:&Url)->Result<Value,String>{
     let segments:Vec<&str>=path.trim_matches('/').split('/').collect();let qp=|name:&str|url.query_pairs().find(|(k,_)|k==name).map(|(_,v)|v.into_owned());
+    if segments.len()==3&&segments[0]=="model-quotas"&&request.method=="DELETE"{return Ok(json!({"ok":crate::model_quota::delete(conn,segments[2])?}));}
     if segments.len()>=3&&segments[0]=="accounts"&&segments[1]=="opencode"{let id=segments[2];
       if segments.len()==3&&request.method=="DELETE"{crate::secrets::remove(id);return Ok(json!({"ok":conn.execute("DELETE FROM opencode_accounts WHERE id=?",params![id]).map_err(|e|e.to_string())?>0}));}
       if segments.len()==3&&request.method=="PUT"{let body=request.body.as_ref().ok_or("request body required")?;for key in ["name","workspace_id"]{if let Some(v)=body.get(key).and_then(Value::as_str){conn.execute(&format!("UPDATE opencode_accounts SET {key}=?,updated_at=? WHERE id=?"),params![v,now(),id]).map_err(|e|e.to_string())?;}}if let Some(secret)=body.get("auth_cookie").and_then(Value::as_str){crate::secrets::set(id,secret)?;conn.execute("UPDATE opencode_accounts SET auth_cookie='keyring',updated_at=? WHERE id=?",params![now(),id]).map_err(|e|e.to_string())?;}for key in ["show_rolling","show_weekly","show_monthly","enabled"]{if let Some(v)=body.get(key).and_then(Value::as_bool){conn.execute(&format!("UPDATE opencode_accounts SET {key}=?,updated_at=? WHERE id=?"),params![v as i64,now(),id]).map_err(|e|e.to_string())?;}}return Ok(account_view(one(conn,"SELECT * FROM opencode_accounts WHERE id=?",&[json!(id)])?));}

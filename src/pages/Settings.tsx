@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { usePolling } from '../hooks/usePolling';
 import { api } from '../api/client';
 import { SyncProgressBar } from '../components/SyncProgress';
+import { ModelQuotaManager } from '../components/ModelQuotaManager';
 import { useToast } from '../components/Toast';
 import { useTheme } from '../components/ThemeProvider';
 import { useFeatureFlags } from '../components/FeatureFlagsProvider';
@@ -645,6 +646,12 @@ export function Settings() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* -- 模型额度与单价 -- */}
+      <div className="border border-base-200 rounded-xl p-4">
+        <h2 className="text-sm font-bold text-base-content/70 mb-4">{t('modelQuota.title')}</h2>
+        <ModelQuotaManager />
       </div>
 
       {/* -- 自动同步 -- */}

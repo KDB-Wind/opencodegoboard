@@ -118,7 +118,9 @@
     "reason_best_safe_headroom": "安全余量最大",
     "reason_least_risk_among_critical": "所有账户均有风险，当前相对最优",
     "notificationTitle": "OpenCode Go 额度提醒",
-    "syncOnly": "一键同步"
+    "syncOnly": "一键同步",
+    "equivalentCost": "等效总费用",
+    "equivalentCostDesc": "按模型月额度折算为 60 刀档 · 近 30 天"
   },
   "tokenStats": {
     "chartDescription": "{{mode}}趋势图，共 {{count}} 个数据点",
@@ -151,7 +153,8 @@
     "trendCompare": "归一化对比",
     "trendTooltipCost": "费用",
     "trendTooltipRequests": "请求数",
-    "reasoning": "推理"
+    "reasoning": "推理",
+    "equivalentCost": "等效总费用"
   },
   "dailyTrends": {
     "title": "每日用量",
@@ -394,5 +397,27 @@
     "desc": "本次升级不会改变你的界面。你可以随时在“设置 → 功能模式”中切换极简模式。",
     "keepFull": "保持完整",
     "tryMinimal": "试试极简"
+  },
+  "modelQuota": {
+    "title": "模型额度与单价",
+    "desc": "把 15 刀档模型的费用折算为 60 刀等效费用（15 刀档 ×4）。默认档位来自 OpenCode 官方文档 2026-08-15（https://opencode.ai/docs/zh-cn/go/），可能发生变化，请自行核对。",
+    "priceNote": "当前实际费用来自 OpenCode 账单接口的 cost 字段；这里的单价用于后续自行维护，暂不参与现有费用计算。",
+    "addModel": "新增模型",
+    "monthlyQuota": "月额度 (USD)",
+    "multiplier": "等效系数",
+    "inputPrice": "输入单价",
+    "outputPrice": "输出单价",
+    "cacheReadPrice": "缓存读单价",
+    "cacheWritePrice": "缓存写单价",
+    "source": "来源",
+    "sourceOfficial": "OpenCode 文档 2026-08-15",
+    "sourceManual": "手动维护",
+    "addDialog": "新增模型额度",
+    "editDialog": "编辑模型额度",
+    "saved": "模型额度已保存",
+    "saveFailed": "保存失败：{{msg}}",
+    "deleted": "模型额度已删除",
+    "deleteFailed": "删除失败：{{msg}}",
+    "confirmDelete": "确定删除 {{name}} 的额度档位吗？"
   }
 }
