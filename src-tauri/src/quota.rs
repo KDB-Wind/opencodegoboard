@@ -1,10 +1,11 @@
 use chrono::{Duration, SecondsFormat, Utc};
 use futures::future::join_all;
 use regex::Regex;
-use reqwest::{header, redirect::Policy, Client};
+use reqwest::header;
 use serde_json::{json, Value};
 
-const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 Firefox/148.0";
+use crate::http::{client, get_text_with_retries};
+
 const WORKSPACE_SERVER_ID: &str = "def39973159c7f0483d8793a822b8dbb10d067e12c65455fcb4608459ba0234f";
 
 #[derive(Clone)]
@@ -12,14 +13,15 @@ pub struct QuotaAccount { pub id:String,pub name:String,pub workspace_id:String,
 
 pub fn cookie(raw:&str)->String{let value=raw.trim().strip_prefix("Cookie:").unwrap_or(raw.trim()).trim();value.split(';').find(|part|part.trim().starts_with("auth=")).map(|v|v.trim().to_string()).unwrap_or_else(||format!("auth={value}"))}
 
-fn client()->Result<Client,String>{Client::builder().redirect(Policy::none()).timeout(std::time::Duration::from_secs(15)).user_agent(USER_AGENT).build().map_err(|e|e.to_string())}
-
 pub async fn resolve_workspace(account:&QuotaAccount)->Result<String,String>{
   if account.workspace_id.starts_with("wrk_"){return Ok(account.workspace_id.clone())}
   let url=format!("https://opencode.ai/_server?id={WORKSPACE_SERVER_ID}");
-  let response=client()?.get(url).header(header::COOKIE,cookie(&account.auth_cookie)).header("X-Server-Id",WORKSPACE_SERVER_ID).header("X-Server-Instance",format!("server-fn:{}",Utc::now().timestamp_nanos_opt().unwrap_or_default())).header(header::ORIGIN,"https://opencode.ai").header(header::REFERER,"https://opencode.ai").send().await.map_err(|e|e.to_string())?;
-  if !response.status().is_success(){return Err(format!("工作区查询返回 HTTP {}",response.status().as_u16()))}
-  let text=response.text().await.map_err(|e|e.to_string())?;let re=Regex::new(r#"id\s*:\s*"(wrk_[^"]+)"[^{}]*?name\s*:\s*"([^"]*)""#).unwrap();
+  let client=client()?;
+  let (status,text)=get_text_with_retries(||{
+    client.get(&url).header(header::COOKIE,cookie(&account.auth_cookie)).header("X-Server-Id",WORKSPACE_SERVER_ID).header("X-Server-Instance",format!("server-fn:{}",Utc::now().timestamp_nanos_opt().unwrap_or_default())).header(header::ORIGIN,"https://opencode.ai").header(header::REFERER,"https://opencode.ai")
+  }).await?;
+  if !status.is_success(){return Err(format!("工作区查询返回 HTTP {}",status.as_u16()))}
+  let re=Regex::new(r#"id\s*:\s*"(wrk_[^"]+)"[^{}]*?name\s*:\s*"([^"]*)""#).unwrap();
   let refs:Vec<(String,String)>=re.captures_iter(&text).map(|c|(c[1].to_string(),c[2].to_string())).collect();
   refs.iter().find(|(_,name)|name.eq_ignore_ascii_case(account.workspace_id.trim())).or_else(||refs.first()).map(|(id,_)|id.clone()).ok_or_else(||"无法从账号数据解析工作区 ID".into())
 }
@@ -34,7 +36,7 @@ pub fn parse_windows(text:&str)->Vec<Value>{[("5h Rolling","rollingUsage"),("Wee
 
 pub async fn fetch(account:QuotaAccount,index:usize)->Value{
   let updated=Utc::now().to_rfc3339_opts(SecondsFormat::Secs,true);let hint=account.workspace_id.clone();
-  let result=async{if account.auth_cookie.trim().is_empty(){return Err("未配置 auth cookie".into())}let workspace=resolve_workspace(&account).await?;let url=format!("https://opencode.ai/workspace/{workspace}/go");let response=client()?.get(url).header(header::COOKIE,cookie(&account.auth_cookie)).header(header::ACCEPT,"text/html, application/xhtml+xml").send().await.map_err(|e|e.to_string())?;if !response.status().is_success(){return Err(format!("Dashboard 返回 HTTP {}",response.status().as_u16()))}let text=response.text().await.map_err(|e|e.to_string())?;let mut windows=parse_windows(&text);windows.retain(|w|match w["label"].as_str(){Some("5h Rolling")=>account.show_rolling,Some("Weekly")=>account.show_weekly,Some("Monthly")=>account.show_monthly,_=>true});if windows.is_empty(){return Err("无法从 Dashboard HTML 解析额度数据".into())}Ok((workspace,windows))}.await;
+  let result=async{if account.auth_cookie.trim().is_empty(){return Err("未配置 auth cookie".into())}let workspace=resolve_workspace(&account).await?;let url=format!("https://opencode.ai/workspace/{workspace}/go");let client=client()?;let(status,text)=get_text_with_retries(||{client.get(&url).header(header::COOKIE,cookie(&account.auth_cookie)).header(header::ACCEPT,"text/html, application/xhtml+xml")}).await?;if !status.is_success(){return Err(format!("Dashboard 返回 HTTP {}",status.as_u16()))}let mut windows=parse_windows(&text);windows.retain(|w|match w["label"].as_str(){Some("5h Rolling")=>account.show_rolling,Some("Weekly")=>account.show_weekly,Some("Monthly")=>account.show_monthly,_=>true});if windows.is_empty(){return Err("无法从 Dashboard HTML 解析额度数据".into())}Ok((workspace,windows))}.await;
   match result{Ok((workspace,windows))=>json!({"index":index,"account_id":account.id,"name":account.name,"workspace_id":workspace,"success":true,"updated_at":updated,"windows":windows}),Err(error)=>json!({"index":index,"account_id":account.id,"name":account.name,"workspace_id":hint,"success":false,"updated_at":updated,"windows":[],"error":error})}
 }
 

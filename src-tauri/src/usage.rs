@@ -1,14 +1,14 @@
+use crate::http::{client, get_text_with_retries};
 use crate::quota::{cookie, resolve_workspace, QuotaAccount};
 use chrono::{SecondsFormat, Utc};
 use regex::Regex;
-use reqwest::{header, redirect::Policy, Client};
+use reqwest::header;
 use rusqlite::{params, Connection};
 use serde_json::{json, Value};
 use std::path::Path;
 use uuid::Uuid;
 
 const SERVER_ID: &str = "bfd684bfc2e4eed05cd0b518f5e4eafd3f3376e3938abb9e536e7c03df831e5c";
-const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 Firefox/148.0";
 
 fn capture_string(body: &str, name: &str) -> String {
     Regex::new(&format!(r#"{}\s*:\s*"([^"]*)""#, regex::escape(name)))
@@ -52,13 +52,15 @@ pub fn parse(text: &str) -> Result<Vec<Value>, String> {
 async fn fetch_page(workspace: &str, secret: &str, page: usize) -> Result<Vec<Value>, String> {
     let args = if page == 0 { json!([workspace]) } else { json!([workspace, page]) };
     let url = format!("https://opencode.ai/_server?id={SERVER_ID}&args={}", urlencoding::encode(&args.to_string()));
-    let client = Client::builder().redirect(Policy::none()).timeout(std::time::Duration::from_secs(15)).build().map_err(|e|e.to_string())?;
-    let response = client.get(url).header(header::COOKIE,cookie(secret)).header("X-Server-Id",SERVER_ID)
-        .header("X-Server-Instance",format!("server-fn:{}",Uuid::new_v4())).header(header::USER_AGENT,USER_AGENT)
-        .header(header::ORIGIN,"https://opencode.ai").header(header::REFERER,format!("https://opencode.ai/workspace/{workspace}/usage"))
-        .send().await.map_err(|e|e.to_string())?;
-    if !response.status().is_success() { return Err(format!("使用记录查询返回 HTTP {}",response.status().as_u16())); }
-    parse(&response.text().await.map_err(|e|e.to_string())?)
+    let client = client()?;
+    let (status, text) = get_text_with_retries(|| {
+        client.get(&url).header(header::COOKIE, cookie(secret)).header("X-Server-Id", SERVER_ID)
+            .header("X-Server-Instance", format!("server-fn:{}", Uuid::new_v4()))
+            .header(header::ORIGIN, "https://opencode.ai")
+            .header(header::REFERER, format!("https://opencode.ai/workspace/{workspace}/usage"))
+    }).await?;
+    if !status.is_success() { return Err(format!("使用记录查询返回 HTTP {}", status.as_u16())); }
+    parse(&text)
 }
 
 fn insert_batch(conn: &mut Connection, account: &str, workspace: &str, pages: &[Vec<Value>]) -> Result<usize, String> {
