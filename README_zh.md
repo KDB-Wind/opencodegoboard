@@ -81,6 +81,12 @@ pnpm dist
 
 NSIS 安装包位于 `src-tauri/target/release/bundle/nsis/`。签名更新、校验和与回滚见 [docs/RELEASE.md](docs/RELEASE.md)，完成状态见 [docs/ROADMAP.md](docs/ROADMAP.md)，实测基准见 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)。
 
+## 项目谱系与致谢
+
+OpenCodeGoBoard 是 **OpenCodeBoard** 的 Tauri + Rust 重构版，而 OpenCodeBoard 是基于 **[68hub](https://github.com/evanfu0110/68hub)**（MIT 协议）的个人使用分支。本仓库是重构而不是 Git fork；原始 MIT 版权声明保留在 `LICENSE` 中，项目谱系记录在 `NOTICE.md` 中。
+
+感谢 [evanfu0110/68hub](https://github.com/evanfu0110/68hub) 以及所有 OpenCodeBoard 贡献者提供的最初基线。
+
 ## 架构
 
 ```text
@@ -90,4 +96,4 @@ scripts/              脱敏、无障碍、基准和发布校验工具
 docs/                 路线、约束、性能、无障碍和发布说明
 ```
 
-本项目为独立开发项目，初始工作基线包含 MIT 许可代码。归属信息见 [NOTICE.md](NOTICE.md) 与 [LICENSE](LICENSE)。公开发布前仍需完成真实账户和干净 Windows 虚拟机验收。
+归属信息见 [NOTICE.md](NOTICE.md) 与 [LICENSE](LICENSE)。公开发布前仍需完成真实账户和干净 Windows 虚拟机验收。

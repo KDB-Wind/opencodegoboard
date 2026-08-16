@@ -1,10 +1,22 @@
 # Attribution and project status
 
-OpenCodeGoBoard is being developed as a new independent project. Its initial
-working baseline was derived from `KDB-Wind/opencodeboard`, which was itself a
-fork of `evanfu0110/68hub`, under the MIT License.
+OpenCodeGoBoard is a Tauri + Rust rewrite of **OpenCodeBoard**
+(`KDB-Wind/opencodeboard`), a personal-use fork of
+**[68hub](https://github.com/evanfu0110/68hub)** (`evanfu0110/68hub`),
+under the MIT License.
 
-The original MIT copyright notice is retained in `LICENSE`. New architecture,
-product direction, documentation, and subsequent original contributions are
-developed in this repository. Before public release, review reused assets and
-source files again and preserve all required notices.
+This repository was created as a refactor rather than as a git fork, but its
+initial working baseline derives from that lineage. The original MIT copyright
+notice is retained in `LICENSE`. New architecture, product direction,
+documentation, and subsequent original contributions are developed in this
+repository.
+
+Upstream links:
+
+- 68hub: https://github.com/evanfu0110/68hub
+- OpenCodeBoard: the personal-use Electron fork of 68hub; link its repository
+  in the READMEs once its public address is finalized.
+
+Before public release, review reused assets and source files again and preserve
+all required notices.
+
