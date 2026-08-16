@@ -20,6 +20,10 @@
   Replaced the confusing normalized comparison with an equivalent-cost comparison: actual cost and equivalent cost plotted as two USD lines (hourly for Today, daily otherwise).
 - 修复今日趋势：只统计今天的数据，横坐标/悬浮提示显示真实小时而不再全部是 00:00。
   Fixed the Today trend to include only today's records and show the real hour labels instead of 00:00 everywhere.
+- 单实例运行：重复启动会唤起已运行实例并退出新进程。
+  Single instance: launching again brings the running instance to the front and exits the new process.
+- 托盘关闭提示：每次启动后第一次最小化到托盘时短暂提示“点击托盘图标可重新打开，右键可退出”，同一次运行内只提示一次。
+  Tray close hint: once per app run, show a brief hint when minimizing to tray; subsequent closes hide silently.
 
 ## v1.2.0 (fork)
 
