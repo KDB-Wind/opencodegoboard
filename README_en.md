@@ -19,11 +19,13 @@ OpenCodeGoBoard is a small, local-first Windows companion for OpenCode Go. It br
 
 ## Screenshots
 
-| Dashboard | Usage Stats |
-|-----------|-------------|
-| ![Dashboard](screenshots/dashboard.png) | ![Usage Stats](screenshots/token-stats.png) |
-| Usage Records | Settings |
-| ![Usage Records](screenshots/usage-records.png) | ![Settings](screenshots/settings.png) |
+![Dashboard](screenshots/dashboard.png)
+
+![Usage Stats](screenshots/token-stats.png)
+
+![Usage Records](screenshots/usage-records.png)
+
+![Settings](screenshots/settings.png)
 
 ## Quick start
 

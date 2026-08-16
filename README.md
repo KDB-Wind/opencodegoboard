@@ -19,11 +19,13 @@ OpenCodeGoBoard 是一个轻量、本地优先的 OpenCode Go Windows 桌面工�
 
 ## 界面预览
 
-| 总览 | 用量统计 |
-|------|---------|
-| ![总览](screenshots/dashboard.png) | ![用量统计](screenshots/token-stats.png) |
-| 使用记录 | 设置 |
-| ![使用记录](screenshots/usage-records.png) | ![设置](screenshots/settings.png) |
+![总览](screenshots/dashboard.png)
+
+![用量统计](screenshots/token-stats.png)
+
+![使用记录](screenshots/usage-records.png)
+
+![设置](screenshots/settings.png)
 
 ## 快速开始
 
