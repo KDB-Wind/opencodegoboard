@@ -1,77 +1,77 @@
 # OpenCodeGoBoard
 
-**English** · [简体中文](README_zh.md)
+**简体中文** · [English](README_en.md)
 
-Repository: [github.com/KDB-Wind/opencodegoboard](https://github.com/KDB-Wind/opencodegoboard) · **Download:** [v1.3.0 Releases](https://github.com/KDB-Wind/opencodegoboard/releases/tag/v1.3.0)
+仓库地址：[github.com/KDB-Wind/opencodegoboard](https://github.com/KDB-Wind/opencodegoboard) · **下载：**[v1.3.0 Releases](https://github.com/KDB-Wind/opencodegoboard/releases/tag/v1.3.0)
 
-OpenCodeGoBoard is a small, local-first Windows companion for OpenCode Go. It brings official quota windows and locally synchronized usage into one desktop view: remaining quota and reset times, total and daily Token use, actual and **equivalent cost**, per-model analytics, and raw usage records.
+OpenCodeGoBoard 是一个轻量、本地优先的 OpenCode Go Windows 桌面工具。它把官方额度窗口和本地同步记录放在同一个界面里：剩余额度与重置时间、每天/每周/任意区间的 Token 用量、实际费用与**等效总费用**、按模型明细和原始使用记录。
 
-## Highlights
+## 主要能力
 
-- Small footprint: Tauri + Rust + SQLite; no Electron, Hono, Bun backend, or localhost HTTP service. Measured process-tree private memory is about 159 MB on a 16 GB machine.
-- **Equivalent cost:** $15-tier models are ×4 normalized to the $60 tier automatically; the tier table is user-maintainable in Settings.
-- Multi-account quota bars for the 5h / 7d / 30d official windows, the tightest quota window, and reset times.
-- Token analytics by Today / 7 days / 30 days / All, plus a **custom start/end date range** (for example, exactly yesterday).
-- Per-model token breakdowns, cache hit rate, request counts, cost, and an actual-vs-equivalent cost trend.
-- Minimal by default; enable stats, records, quota desktop alerts, and advanced sync in **Settings → Feature Mode**.
-- English and Chinese interfaces with IANA time-zone analytics and daylight-saving support.
-- Auth Cookies stored in the Windows credential vault rather than the application database.
+- 体积小：Tauri + Rust + SQLite，不使用 Electron、Hono、Bun 后端或本地 HTTP 服务；16 GB 机器实测进程树私有内存约 159 MB。
+- **等效总费用**：15 刀档模型自动 ×4 折算到 60 刀口径；档位表可在设置中维护。
+- 多账户 5 小时 / 7 天 / 30 天官方额度条、最紧张额度窗口与重置时间。
+- 今天 / 近 7 天 / 近 30 天 / 全部，以及**自定义开始/结束日期**（例如昨天一整天）的用量统计。
+- 按模型的 Token 明细、缓存命中率、请求数、费用，以及实际费用 vs 等效费用趋势。
+- 默认极简模式，可在**设置 → 功能模式**中按需开启统计、记录、额度桌面提醒和高级同步。
+- 中英文界面、IANA 时区统计和夏令时支持。
+- Auth Cookie 保存到 Windows 系统凭据库，而不是应用数据库。
 
-## Quick start
+## 快速开始
 
-1. Fresh installs start in **Minimal mode**. Open **Settings → Feature Mode** if you want more pages, or choose the Full preset.
-2. Open **Settings → OpenCode Accounts → Add Account**.
-3. Sign in through the built-in browser login, or copy the `auth` cookie from `https://opencode.ai` via browser developer tools and paste it into **Auth Cookie**.
-4. Select **Test** to verify the account, then **Sync** to fetch recent usage.
-5. Enable **Advanced Sync** before using **Backfill** when you need older records. Choose recent days, an end date, or all history before starting it.
-6. If a cookie expires, select **Edit** or **Reauthorize**. Updating an existing account preserves its usage history.
+1. 新安装默认进入**极简模式**；如果需要更多页面，先打开**设置 → 功能模式**，或选择“完整”预设。
+2. 打开**设置 → OpenCode 账户 → 添加账户**。
+3. 用内置浏览器登录，或在 `https://opencode.ai` 按 F12 打开开发者工具，复制 `auth` Cookie 粘贴到 **Auth Cookie**。
+4. 点击**测试**确认账户可用，再点击**同步**拉取最近使用记录。
+5. 需要更早的历史记录时先开启**高级同步**，再使用**回填**，开始前选择最近 N 天、截至日期或全部历史。
+6. Cookie 失效时点击**编辑**或**重新授权**；更新原账户不会删除历史数据。
 
-## Application guide
+## 四个功能区
 
-### 1. Dashboard
+### 1. 总览
 
-The Dashboard shows six core cards: account availability, the tightest quota window, total Token consumption, today's Token usage, actual cost, and **equivalent cost** ($15-tier models ×4 normalized to the $60 tier). Below them are per-account quota bars with reset times, recent usage, and a data-health warning when something is incomplete.
+总览展示六张核心卡：账户可用、最紧张额度窗口、总 Token 消耗、今日 Token 使用、总费用和**等效总费用**（15 刀档模型按 ×4 折算到 60 刀口径）。下方是逐账户额度条与重置时间、最近使用记录，数据不完整时会出现健康警告。
 
-Use **Sync Now** when you need fresh data immediately. In Minimal mode it performs incremental sync only; with Advanced Sync enabled it also backfills 90 days of history.
+需要立即刷新时使用**一键同步**。极简模式只做增量同步；开启“高级同步”后，按钮会同时执行 90 天历史回填。
 
-### 2. Token Analytics
+### 2. 统计
 
-(Enable the **Usage Stats** group in Feature Mode first.)
+（需先在**功能模式**中开启“用量统计”。）
 
-Token Analytics summarizes requests, total/input/output/reasoning tokens, cache hits, cost, and equivalent cost. Use the account and model filters, the Today / 7 days / 30 days / All tabs, or the **Custom** tab with a start and end date. The trend chart can show cost, tokens, requests, or actual-vs-equivalent cost; Today shows the hourly distribution.
+统计页面汇总请求数、输入/输出/推理 Token、缓存命中、费用和等效费用。可用账户、模型筛选，或在时间选项卡中选择今天 / 近 7 天 / 近 30 天 / 全部 / **自定义**（开始、结束日期）。趋势图可切换费用、Token、请求或“实际费用 vs 等效费用”；今天按小时展示。
 
-### 3. Usage Records
+### 3. 使用记录
 
-(Enable the **Usage Records** group in Feature Mode first.)
+（需先在**功能模式**中开启“用量记录”。）
 
-Usage Records shows the raw request list: model, input/output/reasoning tokens, cache hit/write, cost, account, session, project and timestamp. Filter by account and page through the list.
+使用记录页只保留原始记录列表：模型、输入/输出/推理 Token、缓存命中与写入、费用、账户、会话、项目和请求时间；支持账户筛选和分页。
 
-### 4. Settings
+### 4. 设置
 
-- **Feature Mode:** choose the Minimal or Full preset, or toggle the four feature groups individually.
-- **Language:** English, Chinese, or follow the operating system.
-- **Time zone:** defaults to `Asia/Shanghai`; choose any available IANA zone such as `America/New_York`. It changes Today, hourly analytics, custom date ranges, and displayed timestamps.
-- **Appearance and readability:** theme and reading-density controls.
-- **System behavior:** tray mode. Desktop quota alerts appear with the Quota Desktop Alerts group and are off by default.
-- **Accounts:** add, enable/disable, test, edit/reauthorize, sync, backfill, or delete an account. Deleting an account also deletes its related local history; use Edit when only the cookie changed.
-- **Model Quota & Pricing:** maintain each model's monthly quota tier ($15 / $60) used by equivalent cost; defaults come from the OpenCode docs dated 2026-08-15 and can be overridden or extended.
-- **Auto sync:** choose whether synchronization runs in the background. The interval appears with Advanced Sync.
-- **History backfill:** shown with Advanced Sync; select recent N days, a cutoff date, or all history.
+- **功能模式**：选择极简或完整预设，或逐个开启四个功能组。
+- **语言**：中文、English 或跟随操作系统。
+- **时区**：默认 `Asia/Shanghai`，也可以选择 `America/New_York` 等任意可用 IANA 时区；影响“今天”、小时统计、自定义日期范围和时间显示。
+- **外观与可读性**：主题和文字密度设置。
+- **系统行为**：设置关闭到托盘；额度桌面提醒随“额度桌面提醒”开关显示，默认关闭。
+- **账户**：添加、启用/停用、测试、编辑/重新授权、同步、回填或删除账户。删除账户会同时删除其本地历史；Cookie 变化时应使用编辑，而不是删除。
+- **模型额度与单价**：维护各模型的月额度档位（15 / 60 刀），等效总费用按此折算；默认档位来自 OpenCode 官方文档 2026-08-15，可自行覆盖或新增模型。
+- **自动同步**：决定是否后台定时同步；同步间隔随“高级同步”开关显示。
+- **历史回填**：随“高级同步”开关显示，可选择最近 N 天、截至日期或全部历史。
 
-## Privacy and data
+## 隐私和数据
 
-Usage and quota data stay in a local SQLite database. Account credentials are stored in Windows Credential Manager.
+用量与额度数据保存在本地 SQLite 数据库中，账户凭据保存在 Windows Credential Manager。
 
-## Development
+## 本地开发
 
-Install Node.js, pnpm, Rust, and the Windows WebView2 development prerequisites.
+需要 Node.js、pnpm、Rust 和 Windows WebView2 开发环境。
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Validation and packaging:
+验证与打包：
 
 ```bash
 pnpm test
@@ -81,21 +81,21 @@ pnpm benchmark:db
 pnpm dist
 ```
 
-The NSIS installer is written to `src-tauri/target/release/bundle/nsis/`. See [docs/RELEASE.md](docs/RELEASE.md) for signing, updater, checksums, and rollback; [docs/ROADMAP.md](docs/ROADMAP.md) for delivery status; and [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for measured baselines.
+NSIS 安装包位于 `src-tauri/target/release/bundle/nsis/`。签名更新、校验和与回滚见 [docs/RELEASE.md](docs/RELEASE.md)，完成状态见 [docs/ROADMAP.md](docs/ROADMAP.md)，实测基准见 [docs/PERFORMANCE.md](docs/PERFORMANCE.md)。
 
-## Project lineage and acknowledgements
+## 项目谱系与致谢
 
-OpenCodeGoBoard is a Tauri + Rust rewrite of **[OpenCodeBoard](https://github.com/KDB-Wind/opencodeboard)**, which is a personal-use fork of **[68hub](https://github.com/evanfu0110/68hub)** (MIT License). This repository is a refactor rather than a git fork; the original MIT copyright notice is retained in `LICENSE`, and the lineage is recorded in `NOTICE.md`.
+OpenCodeGoBoard 是 **[OpenCodeBoard](https://github.com/KDB-Wind/opencodeboard)** 的 Tauri + Rust 重构版，而 OpenCodeBoard 是基于 **[68hub](https://github.com/evanfu0110/68hub)**（MIT 协议）的个人使用分支。本仓库是重构而不是 Git fork；原始 MIT 版权声明保留在 `LICENSE` 中，项目谱系记录在 `NOTICE.md` 中。
 
-Thanks to [evanfu0110/68hub](https://github.com/evanfu0110/68hub) for the initial baseline.
+感谢 [evanfu0110/68hub](https://github.com/evanfu0110/68hub) 提供的最初基线。
 
-## Architecture
+## 架构
 
 ```text
-src/                  React/Vite interface and typed Tauri IPC client
-src-tauri/src/        Rust commands, SQLite, sync, quota logic, and system integration
-scripts/              Redaction, accessibility, benchmark, and release checks
-docs/                 Roadmap, constraints, performance, accessibility, and release notes
+src/                  React/Vite 界面与类型化 Tauri IPC 客户端
+src-tauri/src/        Rust 命令、SQLite、同步、额度逻辑和系统集成
+scripts/              脱敏、无障碍、基准和发布校验工具
+docs/                 路线、约束、性能、无障碍和发布说明
 ```
 
-See [NOTICE.md](NOTICE.md) and [LICENSE](LICENSE) for attribution. A real-account and clean-Windows-VM acceptance pass is required before a public release.
+归属信息见 [NOTICE.md](NOTICE.md) 与 [LICENSE](LICENSE)。公开发布前仍需完成真实账户和干净 Windows 虚拟机验收。
