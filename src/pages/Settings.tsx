@@ -28,7 +28,6 @@ export function Settings() {
   const [testing, setTesting] = useState<string | null>(null);
   const [syncing, setSyncing] = useState<string | null>(null);
   const [syncProg, setSyncProg] = useState<Record<string, { status: string; current: number; total: number; inserted: number; error?: string }>>({});
-  const syncTimerRef = useRef<Record<string, ReturnType<typeof setInterval>>>({});
   const [autoSync, setAutoSync] = useState(true);
   const [syncInterval, setSyncInterval] = useState(300);
   const [backfillMode, setBackfillMode] = useState<'days' | 'until' | 'all'>('days');
@@ -128,12 +127,6 @@ export function Settings() {
     return () => window.removeEventListener('tray-mode-changed', handler);
   }, []);
 
-  useEffect(() => {
-    return () => {
-      Object.values(syncTimerRef.current).forEach(clearInterval);
-    };
-  }, []);
-
   const accounts = config?.opencode_accounts ?? [];
 
   const openAdd = () => {
@@ -182,61 +175,29 @@ export function Settings() {
     }
   };
 
-  const startPollProgress = (id: string) => {
-    const poll = async () => {
-      try {
-        const p = await api.syncProgress(id);
-        if (p.status !== 'idle') {
-          setSyncProg((prev) => ({ ...prev, [id]: p }));
-        }
-        if (p.status === 'done') {
-          toast(t('settings.toastSyncComplete', { count: p.inserted }), 'success');
-          stopPollProgress(id);
-          setSyncing(null);
-          refetch();
-        } else if (p.status === 'error' || p.status === 'timeout') {
-          toast(
-            p.status === 'timeout'
-              ? t('settings.syncTimeout')
-              : t('settings.toastSyncFailedMsg', { msg: p.error || 'unknown' }),
-            'error',
-          );
-          stopPollProgress(id);
-          setSyncing(null);
-        }
-      } catch {
-        // ignore poll errors
-      }
-    };
-    syncTimerRef.current[id] = setInterval(poll, 800);
-    poll();
-  };
-
-  const stopPollProgress = (id: string) => {
-    if (syncTimerRef.current[id]) {
-      clearInterval(syncTimerRef.current[id]);
-      delete syncTimerRef.current[id];
-    }
-  };
-
   const doSync = async (id: string, mode: 'sync' | 'backfill') => {
     setSyncing(id);
     setSyncProg((prev) => ({ ...prev, [id]: { status: 'running', current: 0, total: 0, inserted: 0 } }));
-    startPollProgress(id);
     try {
-      if (mode === 'backfill') {
-        await api.backfillUsage(id, {
-          mode: backfillMode,
-          days: backfillMode === 'days' ? backfillDays : undefined,
-          until: backfillMode === 'until' ? backfillUntil : undefined,
-        });
-      } else {
-        await api.syncUsage(id);
-      }
+      const result =
+        mode === 'backfill'
+          ? await api.backfillUsage(id, {
+              mode: backfillMode,
+              days: backfillMode === 'days' ? backfillDays : undefined,
+              until: backfillMode === 'until' ? backfillUntil : undefined,
+            })
+          : await api.syncUsage(id);
+      toast(t('settings.toastSyncComplete', { count: result.inserted }), 'success');
+      refetch();
     } catch (e) {
-      stopPollProgress(id);
-      setSyncing(null);
       toast(t('settings.toastOpFailed', { msg: (e as Error).message }), 'error');
+    } finally {
+      setSyncing(null);
+      setSyncProg((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
     }
   };
 
