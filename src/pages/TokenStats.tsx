@@ -104,6 +104,7 @@ export function TokenStats() {
   const totalOutput = filteredStats.reduce((s, m) => s + m.total_output_tokens, 0);
   const totalReasoning = filteredStats.reduce((s, m) => s + m.total_reasoning_tokens, 0);
   const totalCost = filteredStats.reduce((s, m) => s + m.total_cost_usd, 0);
+  const totalEquivalentCost = filteredStats.reduce((s, m) => s + (m.equivalent_cost_usd ?? 0), 0);
   const totalRequests = filteredStats.reduce((s, m) => s + m.request_count, 0);
   const uncachedInput = filteredStats.reduce((s, m) => s + Number(m.uncached_input_tokens ?? m.total_input_tokens ?? 0), 0);
   const cacheHit = filteredStats.reduce((s, m) => s + Number(m.cache_hit_tokens ?? 0), 0);
@@ -195,7 +196,7 @@ export function TokenStats() {
           { label: t('dailyTrends.cacheTokens'), value: formatTokens(cacheHit) },
           { label: t('tokenStats.cacheHitRateLabel'), value: `${cacheHitRate}%` },
           { label: t('tokenStats.totalCost'), value: `$${totalCost.toFixed(4)}` },
-          { label: t('tokenStats.equivalentCost'), value: `$${(modelTokens?.equivalent_cost_usd ?? 0).toFixed(4)}` },
+          { label: t('tokenStats.equivalentCost'), value: `$${totalEquivalentCost.toFixed(4)}` },
         ].map((item) => (
           <div key={item.label} className="border border-base-200 rounded-lg px-4 py-2.5 flex-1">
             <div className="metric-label">{item.label}</div>

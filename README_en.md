@@ -2,7 +2,7 @@
 
 **English** · [简体中文](README.md)
 
-Repository: [github.com/KDB-Wind/opencodegoboard](https://github.com/KDB-Wind/opencodegoboard) · **Download:** [v1.3.0 Releases](https://github.com/KDB-Wind/opencodegoboard/releases/tag/v1.3.0)
+Repository: [github.com/KDB-Wind/opencodegoboard](https://github.com/KDB-Wind/opencodegoboard) · **Download:** [Latest Releases](https://github.com/KDB-Wind/opencodegoboard/releases/latest)
 
 OpenCodeGoBoard is a small, local-first Windows companion for OpenCode Go. It brings official quota windows and locally synchronized usage into one desktop view: remaining quota and reset times, total and daily Token use, actual and **equivalent cost**, per-model analytics, and raw usage records.
 
@@ -16,6 +16,14 @@ OpenCodeGoBoard is a small, local-first Windows companion for OpenCode Go. It br
 - Minimal by default; enable stats, records, quota desktop alerts, and advanced sync in **Settings → Feature Mode**.
 - English and Chinese interfaces with IANA time-zone analytics and daylight-saving support.
 - Auth Cookies stored in the Windows credential vault rather than the application database.
+
+## Screenshots
+
+| Dashboard | Usage Stats |
+|-----------|-------------|
+| ![Dashboard](screenshots/dashboard.png) | ![Usage Stats](screenshots/token-stats.png) |
+| Usage Records | Settings |
+| ![Usage Records](screenshots/usage-records.png) | ![Settings](screenshots/settings.png) |
 
 ## Quick start
 

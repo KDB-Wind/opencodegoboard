@@ -2,7 +2,7 @@
 
 **简体中文** · [English](README_en.md)
 
-仓库地址：[github.com/KDB-Wind/opencodegoboard](https://github.com/KDB-Wind/opencodegoboard) · **下载：**[v1.3.0 Releases](https://github.com/KDB-Wind/opencodegoboard/releases/tag/v1.3.0)
+仓库地址：[github.com/KDB-Wind/opencodegoboard](https://github.com/KDB-Wind/opencodegoboard) · **下载：**[最新 Releases](https://github.com/KDB-Wind/opencodegoboard/releases/latest)
 
 OpenCodeGoBoard 是一个轻量、本地优先的 OpenCode Go Windows 桌面工具。它把官方额度窗口和本地同步记录放在同一个界面里：剩余额度与重置时间、每天/每周/任意区间的 Token 用量、实际费用与**等效总费用**、按模型明细和原始使用记录。
 
@@ -16,6 +16,14 @@ OpenCodeGoBoard 是一个轻量、本地优先的 OpenCode Go Windows 桌面工�
 - 默认极简模式，可在**设置 → 功能模式**中按需开启统计、记录、额度桌面提醒和高级同步。
 - 中英文界面、IANA 时区统计和夏令时支持。
 - Auth Cookie 保存到 Windows 系统凭据库，而不是应用数据库。
+
+## 界面预览
+
+| 总览 | 用量统计 |
+|------|---------|
+| ![总览](screenshots/dashboard.png) | ![用量统计](screenshots/token-stats.png) |
+| 使用记录 | 设置 |
+| ![使用记录](screenshots/usage-records.png) | ![设置](screenshots/settings.png) |
 
 ## 快速开始
 

@@ -1,5 +1,12 @@
 # OpenCodeBoard Changelog
 
+## v1.3.1
+
+- 修复用量统计中按模型筛选后，“等效总费用”仍显示全部模型合计的问题；现在按当前筛选的模型求和。
+  Fixed the equivalent-cost card in Usage Stats still showing the all-models total after selecting a model; it now follows the active model filter.
+- 后端按模型返回 `equivalent_cost_usd`，总览与统计页共用同一口径。
+  The backend now returns `equivalent_cost_usd` per model, shared by the dashboard and Usage Stats.
+
 ## v1.3.0
 
 - 默认极简模式：新安装只保留核心配额、基础用量、最近记录与核心设置；功能可随时在“设置 → 功能模式”中开启。

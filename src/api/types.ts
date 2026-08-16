@@ -181,6 +181,7 @@ export interface ModelTokenStat {
   total_output_tokens: number;
   total_reasoning_tokens: number;
   total_cost_usd: number;
+  equivalent_cost_usd: number;
 }
 
 export interface UsageRecord {

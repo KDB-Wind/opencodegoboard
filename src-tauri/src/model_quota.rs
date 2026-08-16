@@ -144,18 +144,31 @@ fn multipliers(conn: &rusqlite::Connection) -> Result<HashMap<String, f64>, Stri
     Ok(map)
 }
 
-/// Sums `cost_usd * tier_multiplier` over per-model stats. Unknown models
-/// default to the 60-dollar tier (multiplier 1) until the user adds a row.
-pub fn equivalent_cost(conn: &rusqlite::Connection, model_stats: &[Value]) -> Result<f64, String> {
+/// Clones per-model stats and adds `equivalent_cost_usd = cost_usd * tier_multiplier`
+/// to each row. Unknown models default to the 60-dollar tier (multiplier 1).
+pub fn with_equivalent_cost(conn: &rusqlite::Connection, model_stats: &[Value]) -> Result<Vec<Value>, String> {
     let map = multipliers(conn)?;
-    let mut total = 0.0;
-    for row in model_stats {
-        let cost = row["total_cost_usd"].as_f64().unwrap_or(0.0);
-        let model = row["model"].as_str().unwrap_or_default();
-        let multiplier = map.get(&normalize_model(model)).copied().unwrap_or(1.0);
-        total += cost * multiplier;
-    }
-    Ok((total * 10_000.0).round() / 10_000.0)
+    model_stats
+        .iter()
+        .map(|row| {
+            let cost = row["total_cost_usd"].as_f64().unwrap_or(0.0);
+            let model = row["model"].as_str().unwrap_or_default();
+            let multiplier = map.get(&normalize_model(model)).copied().unwrap_or(1.0);
+            let mut annotated = row.clone();
+            annotated["equivalent_cost_usd"] = json!(((cost * multiplier) * 10_000.0).round() / 10_000.0);
+            Ok(annotated)
+        })
+        .collect()
+}
+
+/// Sums `equivalent_cost_usd` over per-model stats annotated with
+/// `with_equivalent_cost`.
+pub fn equivalent_cost_total(annotated_model_stats: &[Value]) -> f64 {
+    let total: f64 = annotated_model_stats
+        .iter()
+        .map(|row| row["equivalent_cost_usd"].as_f64().unwrap_or(0.0))
+        .sum();
+    (total * 10_000.0).round() / 10_000.0
 }
 
 pub fn upsert(conn: &rusqlite::Connection, body: &Value) -> Result<Value, String> {
@@ -248,7 +261,11 @@ mod tests {
             json!({"model": "deepseek-v4-pro", "total_cost_usd": 5.0}),
             json!({"model": "unknown-model", "total_cost_usd": 2.0}),
         ];
-        assert_eq!(equivalent_cost(&conn, &stats).unwrap(), 32.0);
+        let annotated = with_equivalent_cost(&conn, &stats).unwrap();
+        assert_eq!(equivalent_cost_total(&annotated), 32.0);
+        assert_eq!(annotated[0]["equivalent_cost_usd"], json!(10.0));
+        assert_eq!(annotated[1]["equivalent_cost_usd"], json!(20.0));
+        assert_eq!(annotated[2]["equivalent_cost_usd"], json!(2.0));
         let rows = list(&conn).unwrap();
         assert!(rows.iter().any(|row| row["display_name"] == "DeepSeek V4 Pro" && row["multiplier"] == 4.0));
     }
