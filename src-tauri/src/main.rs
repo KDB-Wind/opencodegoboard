@@ -27,7 +27,6 @@ fn import_legacy_database(target:&std::path::Path) {
 #[tauri::command]
 fn request_close(app: tauri::AppHandle, preferences: tauri::State<Preferences>) -> String {
     if *preferences.enabled.lock().expect("tray preference lock") {
-        if let Some(window) = app.get_webview_window("main") { let _ = window.hide(); }
         "hide".into()
     } else {
         let _ = app.emit("close-dialog-request", ());
@@ -81,7 +80,11 @@ fn main() {
     #[cfg(windows)]
     std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--disable-gpu --disable-gpu-compositing --renderer-process-limit=1");
     let mut updater=tauri_plugin_updater::Builder::new();if let Some(pubkey)=option_env!("OPENCODEGOBOARD_UPDATER_PUBKEY"){updater=updater.pubkey(pubkey)}
-    let builder=tauri::Builder::default().plugin(tauri_plugin_opener::init()).plugin(updater.build());
+    let builder=tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app,_argv,_cwd|{
+            if let Some(window)=app.get_webview_window("main"){let _=window.show();let _=window.set_focus();}
+        }))
+        .plugin(tauri_plugin_opener::init()).plugin(updater.build());
     builder
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;

@@ -356,7 +356,8 @@
     "closeDialogDesc": "你可以将应用最小化到系统托盘，后台继续同步数据。",
     "minimizeToTray": "最小化到托盘",
     "windowActionFailed": "窗口操作失败：{{msg}}",
-    "quitApp": "退出应用"
+    "quitApp": "退出应用",
+    "trayHint": "已最小化到系统托盘：点击托盘图标可重新打开，右键菜单可退出。"
   },
   "onboarding": {
     "welcome": "欢迎使用 OpenCodeGoBoard",

@@ -10,6 +10,7 @@ export function TitleBar() {
   const { toast } = useToast();
   const [isMaximized, setIsMaximized] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [hidePending, setHidePending] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const openCloseDialog = () => {
@@ -48,10 +49,22 @@ export function TitleBar() {
   };
 
   const handleClose = async () => {
+    if (hidePending) return;
     const result = await desktop.close();
     if (result === 'ask') {
       openCloseDialog();
+      return;
     }
+    // Tray mode: show the hint once per app run, then hide to tray.
+    setHidePending(true);
+    if (sessionStorage.getItem('opencodegoboard.trayHintShown') !== '1') {
+      sessionStorage.setItem('opencodegoboard.trayHintShown', '1');
+      toast(t('titleBar.trayHint'), 'info');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1400));
+    await desktop.closeConfirm('hide');
+    window.dispatchEvent(new CustomEvent('tray-mode-changed', { detail: { enabled: true } }));
+    setHidePending(false);
   };
 
   const handleCloseAction = async (action: string) => {
@@ -109,8 +122,9 @@ export function TitleBar() {
               )}
             </button>
             <button
-              className="w-[46px] h-full flex items-center justify-center text-base-content/40 hover:bg-red-500 hover:text-white transition-colors"
+              className="w-[46px] h-full flex items-center justify-center text-base-content/40 hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50"
               onClick={handleClose}
+              disabled={hidePending}
             >
               <svg width="10" height="10" viewBox="0 0 10 10">
                 <path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" strokeWidth="1.5" />
