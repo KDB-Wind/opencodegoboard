@@ -2,6 +2,8 @@
 
 **English** · [简体中文](README_zh.md)
 
+Repository: [github.com/KDB-Wind/opencodegoboard](https://github.com/KDB-Wind/opencodegoboard)
+
 OpenCodeGoBoard is a small, local-first Windows companion for OpenCode Go. It brings official quota windows and locally synchronized usage into one desktop view: remaining quota and reset times, total and daily Token use, actual and **equivalent cost**, per-model analytics, and raw usage records.
 
 ## Highlights

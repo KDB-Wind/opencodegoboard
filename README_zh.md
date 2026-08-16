@@ -2,6 +2,8 @@
 
 [English](README.md) · **简体中文**
 
+仓库地址：[github.com/KDB-Wind/opencodegoboard](https://github.com/KDB-Wind/opencodegoboard)
+
 OpenCodeGoBoard 是一个轻量、本地优先的 OpenCode Go Windows 桌面工具。它把官方额度窗口和本地同步记录放在同一个界面里：剩余额度与重置时间、每天/每周/任意区间的 Token 用量、实际费用与**等效总费用**、按模型明细和原始使用记录。
 
 ## 主要能力

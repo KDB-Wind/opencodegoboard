@@ -13,6 +13,7 @@ repository.
 
 Upstream links:
 
+- This repository: https://github.com/KDB-Wind/opencodegoboard
 - 68hub: https://github.com/evanfu0110/68hub
 - OpenCodeBoard: https://github.com/KDB-Wind/opencodeboard
 
