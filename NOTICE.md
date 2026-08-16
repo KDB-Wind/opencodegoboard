@@ -14,8 +14,7 @@ repository.
 Upstream links:
 
 - 68hub: https://github.com/evanfu0110/68hub
-- OpenCodeBoard: the personal-use Electron fork of 68hub; link its repository
-  in the READMEs once its public address is finalized.
+- OpenCodeBoard: https://github.com/KDB-Wind/opencodeboard
 
 Before public release, review reused assets and source files again and preserve
 all required notices.

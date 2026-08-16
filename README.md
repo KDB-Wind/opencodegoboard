@@ -83,9 +83,9 @@ The NSIS installer is written to `src-tauri/target/release/bundle/nsis/`. See [d
 
 ## Project lineage and acknowledgements
 
-OpenCodeGoBoard is a Tauri + Rust rewrite of **OpenCodeBoard**, which is a personal-use fork of **[68hub](https://github.com/evanfu0110/68hub)** (MIT License). This repository is a refactor rather than a git fork; the original MIT copyright notice is retained in `LICENSE`, and the lineage is recorded in `NOTICE.md`.
+OpenCodeGoBoard is a Tauri + Rust rewrite of **[OpenCodeBoard](https://github.com/KDB-Wind/opencodeboard)**, which is a personal-use fork of **[68hub](https://github.com/evanfu0110/68hub)** (MIT License). This repository is a refactor rather than a git fork; the original MIT copyright notice is retained in `LICENSE`, and the lineage is recorded in `NOTICE.md`.
 
-Thanks to [evanfu0110/68hub](https://github.com/evanfu0110/68hub) and all OpenCodeBoard contributors for the initial baseline.
+Thanks to [evanfu0110/68hub](https://github.com/evanfu0110/68hub) for the initial baseline.
 
 ## Architecture
 

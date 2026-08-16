@@ -83,9 +83,9 @@ NSIS 安装包位于 `src-tauri/target/release/bundle/nsis/`。签名更新、�
 
 ## 项目谱系与致谢
 
-OpenCodeGoBoard 是 **OpenCodeBoard** 的 Tauri + Rust 重构版，而 OpenCodeBoard 是基于 **[68hub](https://github.com/evanfu0110/68hub)**（MIT 协议）的个人使用分支。本仓库是重构而不是 Git fork；原始 MIT 版权声明保留在 `LICENSE` 中，项目谱系记录在 `NOTICE.md` 中。
+OpenCodeGoBoard 是 **[OpenCodeBoard](https://github.com/KDB-Wind/opencodeboard)** 的 Tauri + Rust 重构版，而 OpenCodeBoard 是基于 **[68hub](https://github.com/evanfu0110/68hub)**（MIT 协议）的个人使用分支。本仓库是重构而不是 Git fork；原始 MIT 版权声明保留在 `LICENSE` 中，项目谱系记录在 `NOTICE.md` 中。
 
-感谢 [evanfu0110/68hub](https://github.com/evanfu0110/68hub) 以及所有 OpenCodeBoard 贡献者提供的最初基线。
+感谢 [evanfu0110/68hub](https://github.com/evanfu0110/68hub) 提供的最初基线。
 
 ## 架构
 
