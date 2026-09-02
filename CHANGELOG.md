@@ -1,4 +1,11 @@
-# OpenCodeBoard Changelog
+# OpenCodeGoBoard Changelog
+
+## v1.3.3
+
+- 修复“最紧张额度窗口”显示浮点数尾差（例如 `4.599999999999999%`）的问题；现在会规范化计算结果并按可读格式显示。
+  Fixed floating-point artifacts in the tightest quota window (for example, `4.599999999999999%`); values are now normalized and displayed in a readable format.
+- 明确记录从旧版 Electron OpenCodeBoard 到 Tauri + Rust OpenCodeGoBoard 的轻量化迁移，包括更小的 Windows 安装包与更低的运行时内存占用。
+  Documented the lightweight migration from the legacy Electron OpenCodeBoard to Tauri + Rust OpenCodeGoBoard, including the substantially smaller Windows installer and lower runtime memory usage.
 
 ## v1.3.1
 
