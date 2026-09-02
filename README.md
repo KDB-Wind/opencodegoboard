@@ -8,7 +8,7 @@ OpenCodeGoBoard 是一个轻量、本地优先的 OpenCode Go Windows 桌面工�
 
 ## 主要能力
 
-- 体积小：Tauri + Rust + SQLite，不使用 Electron、Hono、Bun 后端或本地 HTTP 服务；16 GB 机器实测进程树私有内存约 159 MB。
+- 轻量运行：相比旧版 Electron 的 OpenCodeBoard，安装包体积大幅减小，运行时内存占用更低；采用 Tauri + Rust + SQLite，不使用 Electron、Hono、Bun 后端或本地 HTTP 服务。16 GB 机器实测进程树私有内存约 159 MB。
 - **等效总费用**：15 刀档模型自动 ×4 折算到 60 刀口径；档位表可在设置中维护。
 - 多账户 5 小时 / 7 天 / 30 天官方额度条、最紧张额度窗口与重置时间。
 - 今天 / 近 7 天 / 近 30 天 / 全部，以及**自定义开始/结束日期**（例如昨天一整天）的用量统计。

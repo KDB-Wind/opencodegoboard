@@ -1,4 +1,5 @@
 import type { QuotaIntelligence } from '../api/types';
+import { formatPercent } from './format';
 
 export type NotificationThreshold = 'warning' | 'critical';
 
@@ -42,7 +43,7 @@ export async function notifyQuotaAlert(windows: QuotaIntelligence[], title: stri
   const key = `${alert.account_id}:${alert.window_label}:${alert.captured_at}:${alert.alert_level}`;
   if (localStorage.getItem(LAST_KEY) === key) return;
   new Notification(title, {
-    body: `${alert.account_name} · ${alert.window_label} · ${alert.remaining}%`,
+    body: `${alert.account_name} · ${alert.window_label} · ${formatPercent(alert.remaining)}`,
     tag: `quota:${alert.account_id}:${alert.window_label}`,
   });
   localStorage.setItem(LAST_KEY, key);

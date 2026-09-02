@@ -32,7 +32,9 @@ fn parse_pair(text:&str,field:&str)->Option<(f64,i64)>{
   let reset=Regex::new(r"resetInSec\s*:\s*(-?\d+(?:\.\d+)?)").ok()?.captures(&block)?.get(1)?.as_str().parse::<f64>().ok()? as i64;Some((pct,reset))
 }
 
-pub fn parse_windows(text:&str)->Vec<Value>{[("5h Rolling","rollingUsage"),("Weekly","weeklyUsage"),("Monthly","monthlyUsage")].iter().filter_map(|(label,field)|parse_pair(text,field).map(|(used,reset)|{let used=used.clamp(0.0,100.0);json!({"label":label,"used":used,"remaining":100.0-used,"total":100.0,"unit":"%","reset_at":(Utc::now()+Duration::seconds(reset)).to_rfc3339_opts(SecondsFormat::Secs,true),"reset_in_sec":reset})})).collect()}
+fn round_percent(value:f64)->f64{(value*1_000_000.0).round()/1_000_000.0}
+
+pub fn parse_windows(text:&str)->Vec<Value>{[("5h Rolling","rollingUsage"),("Weekly","weeklyUsage"),("Monthly","monthlyUsage")].iter().filter_map(|(label,field)|parse_pair(text,field).map(|(used,reset)|{let used=used.clamp(0.0,100.0);let remaining=round_percent(100.0-used);json!({"label":label,"used":used,"remaining":remaining,"total":100.0,"unit":"%","reset_at":(Utc::now()+Duration::seconds(reset)).to_rfc3339_opts(SecondsFormat::Secs,true),"reset_in_sec":reset})})).collect()}
 
 pub async fn fetch(account:QuotaAccount,index:usize)->Value{
   let updated=Utc::now().to_rfc3339_opts(SecondsFormat::Secs,true);let hint=account.workspace_id.clone();
@@ -43,4 +45,4 @@ pub async fn fetch(account:QuotaAccount,index:usize)->Value{
 pub async fn fetch_all(accounts:Vec<QuotaAccount>)->Vec<Value>{join_all(accounts.into_iter().enumerate().map(|(index,account)|fetch(account,index))).await}
 
 #[cfg(test)]
-mod tests{use super::*;#[test]fn parses_compact_and_spaced_windows(){let rows=parse_windows(r#"rollingUsage: $R[1] = {usagePercent: 25.5, resetInSec:3600} weeklyUsage:$R[2]={resetInSec: 7200,usagePercent: 40}"#);assert_eq!(rows.len(),2);assert_eq!(rows[0]["remaining"],74.5);}}
+mod tests{use super::*;#[test]fn parses_compact_and_spaced_windows(){let rows=parse_windows(r#"rollingUsage: $R[1] = {usagePercent: 25.5, resetInSec:3600} weeklyUsage:$R[2]={resetInSec: 7200,usagePercent: 40}"#);assert_eq!(rows.len(),2);assert_eq!(rows[0]["remaining"],74.5);}#[test]fn rounds_remaining_percent_without_binary_float_artifacts(){let rows=parse_windows(r#"monthlyUsage: $R[1] = {usagePercent: 95.4, resetInSec:3600}"#);assert_eq!(rows[0]["remaining"],4.6);}}

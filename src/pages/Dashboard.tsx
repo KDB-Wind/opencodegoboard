@@ -10,6 +10,7 @@ import { TokenBreakdownTooltip } from '../components/TokenBreakdownTooltip';
 import { useToast } from '../components/Toast';
 import { getStoredTimeRange, storeTimeRange, TimeRangeTabs, type TimeRange } from '../components/TimeRangeTabs';
 import { notifyQuotaAlert } from '../lib/quotaNotifications';
+import { formatPercent } from '../lib/format';
 import type { QuotaWindow } from '../api/types';
 import { DEFAULT_TIMEZONE } from '../lib/timezone';
 
@@ -251,7 +252,7 @@ export function Dashboard() {
     const totalCost = tokens.reduce((s, m) => s + m.total_cost_usd, 0);
     const cards = [
       { label: t('dashboard.account'), value: overview?.account_count ?? '-', sub: t('dashboard.availableBlocked', { available: overview?.success_count ?? 0, blocked: overview?.blocked_count ?? 0 }), breakdown: null, size: 'sm' },
-      { label: t('dashboard.bottleneckQuota'), value: overview?.bottleneck ? `${overview.bottleneck.remaining}%` : '-', sub: overview?.bottleneck ? `${overview.bottleneck.name} · ${overview.bottleneck.window}` : t('dashboard.noBottleneck'), breakdown: null, size: 'sm' },
+      { label: t('dashboard.bottleneckQuota'), value: overview?.bottleneck ? formatPercent(overview.bottleneck.remaining) : '-', sub: overview?.bottleneck ? `${overview.bottleneck.name} · ${overview.bottleneck.window}` : t('dashboard.noBottleneck'), breakdown: null, size: 'sm' },
       {
         label: t('dashboard.totalTokenConsumption'),
         value: fmt(tkn),

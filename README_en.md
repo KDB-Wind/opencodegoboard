@@ -8,7 +8,7 @@ OpenCodeGoBoard is a small, local-first Windows companion for OpenCode Go. It br
 
 ## Highlights
 
-- Small footprint: Tauri + Rust + SQLite; no Electron, Hono, Bun backend, or localhost HTTP service. Measured process-tree private memory is about 159 MB on a 16 GB machine.
+- Lightweight runtime: compared with the legacy Electron-based OpenCodeBoard, the installer is substantially smaller and runtime memory usage is lower. OpenCodeGoBoard uses Tauri + Rust + SQLite, with no Electron, Hono, Bun backend, or localhost HTTP service. Measured process-tree private memory is about 159 MB on a 16 GB machine.
 - **Equivalent cost:** $15-tier models are ×4 normalized to the $60 tier automatically; the tier table is user-maintainable in Settings.
 - Multi-account quota bars for the 5h / 7d / 30d official windows, the tightest quota window, and reset times.
 - Token analytics by Today / 7 days / 30 days / All, plus a **custom start/end date range** (for example, exactly yesterday).
