@@ -24,28 +24,34 @@
     "dist": "tauri build",
     "preview": "vite preview"
   },
-  "keywords": ["tauri", "react", "opencode", "quota", "usage"],
+  "keywords": [
+    "tauri",
+    "react",
+    "opencode",
+    "quota",
+    "usage"
+  ],
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.2",
-    "@tauri-apps/cli": "^2.11.4",
-    "@types/node": "^20.14.0",
-    "@types/react": "^18.3.3",
-    "@types/react-dom": "^18.3.0",
-    "@vitejs/plugin-react": "^4.3.0",
-    "daisyui": "^5.6.17",
-    "i18next": "^26.3.6",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/cli": "^2.12.3",
+    "@types/node": "^20.19.43",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "daisyui": "^5.7.50",
+    "i18next": "^26.4.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-i18next": "^17.0.10",
-    "react-router-dom": "^7.18.1",
-    "recharts": "^3.9.2",
-    "tailwindcss": "^4.3.2",
-    "typescript": "^5.4.5",
-    "vite": "^5.2.12",
-    "vitest": "^3.2.4"
+    "react-i18next": "^17.0.16",
+    "react-router-dom": "^7.18.4",
+    "recharts": "^3.10.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.4",
+    "vitest": "^4.1.11"
   },
   "dependencies": {
-    "@lobehub/icons": "^5.15.0",
-    "@tauri-apps/api": "^2.11.1"
+    "@lobehub/icons": "^5.23.1",
+    "@tauri-apps/api": "^2.12.4"
   }
 }
