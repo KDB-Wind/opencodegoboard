@@ -1,39 +1,37 @@
-import {
-  Anthropic,
-  Cohere,
-  DeepSeek,
-  Google,
-  Grok,
-  Hunyuan,
-  Meta,
-  Microsoft,
-  Minimax,
-  Mistral,
-  Moonshot,
-  OpenAI,
-  Qwen,
-  XiaomiMiMo,
-  ZeroOne,
-  Zhipu,
-} from '@lobehub/icons';
+import Anthropic from '@lobehub/icons/es/Anthropic/components/Mono';
+import Cohere from '@lobehub/icons/es/Cohere/components/Color';
+import DeepSeek from '@lobehub/icons/es/DeepSeek/components/Color';
+import Google from '@lobehub/icons/es/Google/components/Color';
+import Grok from '@lobehub/icons/es/Grok/components/Mono';
+import Hunyuan from '@lobehub/icons/es/Hunyuan/components/Color';
+import Meta from '@lobehub/icons/es/Meta/components/Color';
+import Microsoft from '@lobehub/icons/es/Microsoft/components/Color';
+import Minimax from '@lobehub/icons/es/Minimax/components/Color';
+import Mistral from '@lobehub/icons/es/Mistral/components/Color';
+import Moonshot from '@lobehub/icons/es/Moonshot/components/Mono';
+import OpenAI from '@lobehub/icons/es/OpenAI/components/Mono';
+import Qwen from '@lobehub/icons/es/Qwen/components/Color';
+import XiaomiMiMo from '@lobehub/icons/es/XiaomiMiMo/components/Mono';
+import ZeroOne from '@lobehub/icons/es/ZeroOne/components/Color';
+import Zhipu from '@lobehub/icons/es/Zhipu/components/Color';
 import type { IconType } from '@lobehub/icons';
 
 const map: [RegExp, IconType][] = [
-  [/qwen/i, Qwen.Color],
-  [/deepseek/i, DeepSeek.Color],
+  [/qwen/i, Qwen],
+  [/deepseek/i, DeepSeek],
   [/kimi|k2|moonshot/i, Moonshot],
-  [/glm|zhipu|chatglm/i, Zhipu.Color],
-  [/hy3|hunyuan/i, Hunyuan.Color],
+  [/glm|zhipu|chatglm/i, Zhipu],
+  [/hy3|hunyuan/i, Hunyuan],
   [/mimo/i, XiaomiMiMo],
-  [/minimax/i, Minimax.Color],
+  [/minimax/i, Minimax],
   [/gpt|o1|o3|chatgpt|openai|dall-e|whisper|tts|embed/i, OpenAI],
   [/claude|anthropic/i, Anthropic],
-  [/gemini|gemma/i, Google.Color],
-  [/llama|meta/i, Meta.Color],
-  [/mistral/i, Mistral.Color],
-  [/cohere|command/i, Cohere.Color],
-  [/yi-/i, ZeroOne.Color],
-  [/phi/i, Microsoft.Color],
+  [/gemini|gemma/i, Google],
+  [/llama|meta/i, Meta],
+  [/mistral/i, Mistral],
+  [/cohere|command/i, Cohere],
+  [/yi-/i, ZeroOne],
+  [/phi/i, Microsoft],
   [/grok/i, Grok],
 ];
 
