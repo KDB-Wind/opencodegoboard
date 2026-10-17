@@ -1,4 +1,4 @@
-# 1.3.4 Windows 发行候选验收
+# 1.3.4 Windows 安装包验收
 
 日期：2026-10-17。PR #4 已合并；应用版本统一为 1.3.4，Rust Tauri 2.12.4 与前端 API 对齐，Rustls 更新为 0.23.45。Tauri 重新生成的权限 Schema 随版本提交，未扩大应用 capabilities 授权。
 
@@ -6,7 +6,7 @@
 
 - 文件：`OpenCodeGoBoard_1.3.4_x64-setup.exe`，3,209,155 字节。
 - SHA256：`b5e4160f316e37962554637adebb2cdece178934f95546d7ecacfe4bd4599061`。
-- GitHub 草稿 Release 附有相同字节的安装包与 `SHA256SUMS.txt`。
+- GitHub Release 使用本次验收的相同字节安装包，附有 `SHA256SUMS.txt`。
 - Authenticode 状态为 `NotSigned`；没有生成 Tauri 更新签名或 `latest.json`。
 
 ## 已通过
@@ -30,6 +30,6 @@ GitHub 仍可能显示 glib 0.18.5 的 Linux 条件性公告；Windows x64 依�
 
 ## 发布门禁
 
-本候选仍为草稿。仓库没有配置 Tauri 更新签名 Secrets/公钥变量，也未接入 Windows Authenticode 证书。[既有发布要求](RELEASE.md) 将二者列为公开分发前提。需要补齐签名后验证最终签名产物，或由维护者明确变更分发要求；未得到该决定前不公开本未签名候选、不更新 latest.json。
+维护者于 2026-10-17 明确授权沿用 1.3.3 的未签名手动下载方式发布 1.3.4，[发布文档](RELEASE.md) 已同步这一决定。仓库没有配置 Tauri 更新签名或 Windows Authenticode 证书，本次不生成 latest.json，不启用应用内自动更新。版本 tag 不自动运行签名构建工作流，避免已验收安装包被重新构建覆盖。正式公开状态以 GitHub Release 为准。
 
 原始截图、旧版 SQLite 快照、安装/升级/卸载 JSON 和校验日志保存在本次本地维护记录与 `.tmp/opencode-release-1.3.4/`，草稿 Release 的安装包哈希可独立复核。历史失败尝试单独保留，不用其结果替代上述最终验收。

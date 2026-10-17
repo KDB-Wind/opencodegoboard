@@ -1,8 +1,6 @@
 name: signed-release
 on:
   workflow_dispatch:
-  push:
-    tags: ['v*']
 
 permissions:
   contents: write
@@ -17,6 +15,12 @@ jobs:
       OPENCODEGOBOARD_UPDATER_ENDPOINT: https://github.com/${{ github.repository }}/releases/latest/download/latest.json
     steps:
       - uses: actions/checkout@v4
+      - name: Check updater signing configuration
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY) -or [string]::IsNullOrWhiteSpace($env:OPENCODEGOBOARD_UPDATER_PUBKEY)) {
+            throw 'Configure the updater private key and public key before requesting a signed updater draft. Manual installer releases use the standard build configuration.'
+          }
       - uses: pnpm/action-setup@v4
         with: { version: 10 }
       - uses: actions/setup-node@v4
