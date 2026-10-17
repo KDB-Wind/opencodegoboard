@@ -39,3 +39,5 @@ jobs:
         run: pnpm test
       - name: Typecheck and build
         run: pnpm build
+      - name: Verify Tauri build compatibility
+        run: pnpm exec tauri build --ci --debug --no-bundle

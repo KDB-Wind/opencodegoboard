@@ -4,7 +4,7 @@
 
 用户授权推送此前本地完成的 OpenCodeGoBoard 修复，目标仓库为仍未归档的 `KDB-Wind/opencodegoboard`，默认分支 `master`。基线为 `7956273eeea4b148ce7b2fe9c82afaa55afacbc5`，交付到 `codex/local-fixes-20261016` 及草稿 PR。旧 Electron 仓库 `opencodeboard` 已归档，不在本次交付范围。
 
-不合并 master、不打 tag、不发布安装包，也不读取真实账户或凭据。
+以上为最初推送阶段的授权范围。2026-10-17 用户追加授权按顺序合并、更新版本、准备草稿 Release、验收 Windows 安装包并正式发布。PR #4 已合并，随后版本更新为 1.3.4；是否已发布以 GitHub Release 状态为准。仍不读取真实账户或凭据。
 
 ## 修复
 
@@ -30,3 +30,11 @@ Windows 原生功能复测 6 项通过，使用真实 Tauri/WebView2 与隔离 S
 ## 验收边界
 
 本轮未验收签名安装包的安装、覆盖升级和卸载，也未进行真实账户登录/额度同步。macOS/Linux 原生挂载本轮按用户要求暂缓。推送 PR 不表示 master 已合并、安装包已发布或线上已更新。
+
+## 1.3.4 发行准备 / 2026-10-17
+
+PR #4 已合并为 `2facab1e6f95059395abbedd099b184b28c0282e`。首次实际打包发现 Rust Tauri 2.11.5 与前端 API 2.12.4 的次版本不匹配，普通前端 build/cargo check 未覆盖该门禁。将 Rust Tauri 更新并锁定到 2.12.4，同步应用版本到 1.3.4，并在 Windows CI 增加 `tauri build --ci --debug --no-bundle`，实际检查 Tauri 版本匹配与原生构建。
+
+更新后的前端 9 项、Rust 18 项（1 项 benchmark 忽略）、类型检查和真实 Tauri debug 构建通过。Release 程序编译通过，NSIS 安装器在本地生成；官方 NSIS 工具下载中断后按原来源重试并核对工具哈希，没有跳过工具链校验。Windows 安装/升级/卸载正在独立 Windows Sandbox 中验收，最终结果另存发行记录；原来的 6 项功能结果不替代本次更新后的安装包验收。
+
+仓库目前没有 Actions Secrets 或 Variables，尚未接入 Tauri 更新签名私钥/公钥及 Windows Authenticode 签名。候选包用于隔离验收，草稿 Release 不等于正式公开发布；在补齐签名和实际安装包验收前，不更新公开下载或 `latest.json`。
