@@ -38,3 +38,5 @@ PR #4 已合并为 `2facab1e6f95059395abbedd099b184b28c0282e`。首次实际打�
 更新后的前端 9 项、Rust 18 项（1 项 benchmark 忽略）、类型检查和真实 Tauri debug 构建通过。Release 程序编译通过，NSIS 安装器在本地生成；官方 NSIS 工具下载中断后按原来源重试并核对工具哈希，没有跳过工具链校验。Windows 安装/升级/卸载正在独立 Windows Sandbox 中验收，最终结果另存发行记录；原来的 6 项功能结果不替代本次更新后的安装包验收。
 
 仓库目前没有 Actions Secrets 或 Variables，尚未接入 Tauri 更新签名私钥/公钥及 Windows Authenticode 签名。候选包用于隔离验收，草稿 Release 不等于正式公开发布；在补齐签名和实际安装包验收前，不更新公开下载或 `latest.json`。
+
+发行复核还发现 Rustls 公告 #22，锁文件从 0.23.43 更新到已修复的 0.23.45，重新验证该提交。另有 glib 0.18.5 公告 #16；`cargo tree --target x86_64-pc-windows-msvc -i glib --locked` 确认 Windows 依赖树未包含 glib，Linux 条件性问题保留，不将本轮 Windows 发行表述为跨平台依赖审计全部通过。
