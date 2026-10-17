@@ -35,7 +35,7 @@ Windows 原生功能复测 6 项通过，使用真实 Tauri/WebView2 与隔离 S
 
 PR #4 已合并为 `2facab1e6f95059395abbedd099b184b28c0282e`。首次实际打包发现 Rust Tauri 2.11.5 与前端 API 2.12.4 的次版本不匹配，普通前端 build/cargo check 未覆盖该门禁。将 Rust Tauri 更新并锁定到 2.12.4，同步应用版本到 1.3.4，并在 Windows CI 增加 `tauri build --ci --debug --no-bundle`，实际检查 Tauri 版本匹配与原生构建。
 
-更新后的前端 9 项、Rust 18 项（1 项 benchmark 忽略）、类型检查和真实 Tauri debug 构建通过。Release 程序编译通过，NSIS 安装器在本地生成；官方 NSIS 工具下载中断后按原来源重试并核对工具哈希，没有跳过工具链校验。Windows 安装/升级/卸载正在独立 Windows Sandbox 中验收，最终结果另存发行记录；原来的 6 项功能结果不替代本次更新后的安装包验收。
+更新后的前端 9 项、Rust 18 项（1 项 benchmark 忽略）、类型检查和真实 Tauri debug 构建通过。Release 程序编译通过，NSIS 安装器在本地生成；官方 NSIS 工具下载中断后按原来源重试并核对工具哈希，没有跳过工具链校验。已在独立 Windows Sandbox 中完成实际候选的全新安装、覆盖升级、合成数据保留、界面设置保存与重启、卸载验收；运行时条件、哈希和签名缺口见 [1.3.4 验收记录](RELEASE-1.3.4.md)。原来的 6 项功能结果不替代本次更新后的安装包验收。
 
 仓库目前没有 Actions Secrets 或 Variables，尚未接入 Tauri 更新签名私钥/公钥及 Windows Authenticode 签名。候选包用于隔离验收，草稿 Release 不等于正式公开发布；在补齐签名和实际安装包验收前，不更新公开下载或 `latest.json`。
 
